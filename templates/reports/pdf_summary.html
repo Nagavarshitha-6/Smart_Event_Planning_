@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Executive Event Operations Briefing - Metropolitan University</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    @page { size: letter portrait; margin: 18mm 16mm; }
+    body { font-family: 'Inter', -apple-system, sans-serif; color: #0b1c30; background: #ffffff; margin: 0; padding: 24px; font-size: 13px; line-height: 1.5; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .header { border-bottom: 2px solid #0037b0; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .title { font-size: 24px; font-weight: 700; color: #0037b0; margin: 0 0 4px 0; }
+    .subtitle { color: #565e74; font-size: 13px; margin: 0; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; background: #eff4ff; color: #0037b0; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .kpi-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; background: #f8f9ff; }
+    .kpi-label { font-size: 11px; text-transform: uppercase; color: #565e74; font-weight: 600; }
+    .kpi-value { font-size: 22px; font-weight: 700; color: #0b1c30; margin: 4px 0; font-family: 'JetBrains Mono', monospace; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
+    th { background: #eff4ff; color: #0037b0; text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; border-bottom: 1px solid #cbd5e1; }
+    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+    .footer { margin-top: 32px; border-top: 1px solid #cbd5e1; padding-top: 12px; display: flex; justify-content: space-between; font-size: 11px; color: #747686; font-family: 'JetBrains Mono', monospace; }
+    @media print {
+      .no-print { display: none !important; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+    <button onclick="window.print()" style="padding: 8px 16px; background: #0037b0; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+      Print / Save as PDF
+    </button>
+  </div>
+
+  <div class="header">
+    <div>
+      <h1 class="title">Metropolitan University</h1>
+      <p class="subtitle">Executive Operations &amp; Resource Telemetry Briefing • Campus Core</p>
+    </div>
+    <div style="text-align: right;">
+      <span class="badge">OFFICIAL INSTITUTIONAL RECORD</span>
+      <div class="mono" style="font-size: 11px; color: #565e74; margin-top: 6px;">Generated: {{ generated_date|date:"Y-m-d H:i T" }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Events Managed</div>
+      <div class="kpi-value">{{ total_events }}</div>
+      <div style="color: #047857; font-size: 11px;">94.2% Completion Rate</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Registrations</div>
+      <div class="kpi-value">{{ total_registrations|floatformat:0 }}</div>
+      <div style="color: #0037b0; font-size: 11px;">86.4% Turnout Realization</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Gross Disbursed</div>
+      <div class="kpi-value">${{ gross_disbursed|floatformat:0 }}</div>
+      <div style="color: #047857; font-size: 11px;">-9.2% Under Cap Margin</div>
+    </div>
+  </div>
+
+  <h3 style="font-size: 15px; margin: 16px 0 8px 0; color: #0b1c30;">Active Institutional Production Run List</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Event ID</th>
+        <th>Event Name</th>
+        <th>Category</th>
+        <th>Date</th>
+        <th>Venue</th>
+        <th style="text-align: right;">Capacity</th>
+        <th style="text-align: center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for evt in events %}
+      <tr>
+        <td class="mono" style="font-weight: 600; color: #0037b0;">{{ evt.event_id }}</td>
+        <td style="font-weight: 500;">{{ evt.name }}</td>
+        <td>{{ evt.category }}</td>
+        <td class="mono">{{ evt.date|date:"Y-m-d" }}</td>
+        <td>{{ evt.venue }}</td>
+        <td class="mono" style="text-align: right;">{{ evt.capacity }}</td>
+        <td style="text-align: center;">{{ evt.status }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align: center; color: #747686; padding: 24px;">No active events scheduled in current scope.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>EventCore 2.0 • Office of Campus Operations &amp; Facilities Logistics</span>
+    <span>CONFIDENTIAL &amp; PROPRIETARY</span>
+  </div>
+
+</body>
+</html>

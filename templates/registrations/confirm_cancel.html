@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cancel Registration: {{ reg.name }} | EventCore Platform{% endblock %}
+{% block breadcrumb %}Cancel Pass{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 60vh;">
+  <div class="stitch-card p-4 p-md-5" style="max-width: 580px; width: 100%;">
+    <div class="d-flex align-items-center gap-3 mb-3 text-danger">
+      <div class="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+        <span class="material-symbols-outlined text-danger" style="font-size: 28px;">warning</span>
+      </div>
+      <div>
+        <h1 class="h5 fw-bold mb-0 text-danger">Cancel Registration Pass</h1>
+        <span class="small text-muted font-mono-data">Action cannot be reversed automatically</span>
+      </div>
+    </div>
+
+    <p class="text-secondary mb-4">
+      Are you sure you want to cancel the registration for <strong class="text-dark">{{ reg.name }}</strong>?
+    </p>
+
+    <div class="p-3 bg-light rounded-3 border mb-4 font-mono-data small">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="text-muted">Ticket ID:</span>
+        <span class="fw-bold text-dark">{{ reg.ticket_id }}</span>
+      </div>
+      <div class="d-flex justify-content-between mb-1">
+        <span class="text-muted">Attendee Email:</span>
+        <span class="text-dark">{{ reg.email }}</span>
+      </div>
+      <div class="d-flex justify-content-between mb-1">
+        <span class="text-muted">Event:</span>
+        <span class="text-dark text-truncate" style="max-width: 250px;">{{ reg.event.name }}</span>
+      </div>
+      <div class="d-flex justify-content-between">
+        <span class="text-muted">Current Status:</span>
+        <span class="fw-semibold text-primary">{{ reg.status }}</span>
+      </div>
+    </div>
+
+    <div class="alert alert-warning small py-2 px-3 mb-4 rounded-2">
+      <span class="fw-semibold">Notice:</span> Cancelling this pass will permanently flag the ticket ID. Any gate scanner scan will be rejected as <code>403 Forbidden / Revoked</code>.
+    </div>
+
+    <form method="post" action="">
+      {% csrf_token %}
+      <div class="d-flex align-items-center justify-content-end gap-2">
+        <a href="{% url 'registrations:detail' reg.id %}" class="btn btn-outline-secondary px-3 py-2 rounded-2">
+          Keep Active
+        </a>
+        <button type="submit" class="btn btn-danger d-inline-flex align-items-center gap-1.5 px-4 py-2 rounded-2 shadow-sm">
+          <span class="material-symbols-outlined" style="font-size: 18px;">cancel</span>
+          <span>Confirm Cancellation</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

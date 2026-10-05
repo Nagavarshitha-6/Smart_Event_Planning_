@@ -1,0 +1,533 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Operational Dashboard{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4">
+  <!-- Top Action Bar & Greeting -->
+  <div class="d-flex flex-column flex-md-row md:items-center justify-content-between gap-3">
+    <div>
+      <h1 class="display-title mb-1">Operational Dashboard</h1>
+      <p class="text-muted-variant mb-0 d-flex align-items-center gap-2">
+        <span>Good day, {{ user.get_full_name|default:user.username }}</span>
+        <span>•</span>
+        <span class="font-mono-data text-primary fw-semibold">Campus Operations Command</span>
+        <span>•</span>
+        <span class="font-mono-data small text-muted-variant">{% now "l, F d, Y" %}</span>
+      </p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="campus-selector-pill">
+        <span class="material-symbols-outlined text-primary" style="font-size: 16px;">school</span>
+        <span>Fall Semester 2026</span>
+        <span class="material-symbols-outlined text-muted-variant" style="font-size: 16px;">expand_more</span>
+      </div>
+      <a href="{% url 'reports:index' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined text-primary" style="font-size: 18px;">download</span>
+        <span>Daily Brief</span>
+      </a>
+      <a href="{% url 'events:create' %}" class="btn btn-primary-stitch d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+        <span>New Event</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 6 KPI Grid (Real Database Data) -->
+  <div class="row g-3">
+    <!-- KPI 1: Total Events -->
+    <div class="col-6 col-lg-4 col-xxl-2">
+      <div class="stitch-card kpi-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="kpi-title">Total Events</span>
+          <div class="kpi-icon-wrap">
+            <span class="material-symbols-outlined">calendar_today</span>
+          </div>
+        </div>
+        <div class="kpi-value">{{ total_events }}</div>
+        <div class="kpi-meta text-primary">
+          <span class="fw-semibold">{{ upcoming_events_count }} upcoming</span>
+          <span class="text-muted-variant">scheduled</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 2: Total Attendees -->
+    <div class="col-6 col-lg-4 col-xxl-2">
+      <div class="stitch-card kpi-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="kpi-title">Attendees</span>
+          <div class="kpi-icon-wrap">
+            <span class="material-symbols-outlined">groups</span>
+          </div>
+        </div>
+        <div class="kpi-value">{{ total_attendees }}</div>
+        <div class="kpi-meta">
+          <span class="badge bg-primary-subtle text-primary font-mono-data rounded-pill">Total RSVP</span>
+          <span class="text-muted-variant">campus-wide</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 3: Total Vendors -->
+    <div class="col-6 col-lg-4 col-xxl-2">
+      <div class="stitch-card kpi-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="kpi-title">Vendors</span>
+          <div class="kpi-icon-wrap">
+            <span class="material-symbols-outlined">storefront</span>
+          </div>
+        </div>
+        <div class="kpi-value">{{ total_vendors }}</div>
+        <div class="kpi-meta text-primary">
+          <span class="status-pill status-confirmed py-0 px-2">{{ active_vendors_count }} Active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 4: Checked-In Attendees -->
+    <div class="col-6 col-lg-4 col-xxl-2">
+      <div class="stitch-card kpi-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="kpi-title">Checked-In</span>
+          <div class="kpi-icon-wrap">
+            <span class="material-symbols-outlined">how_to_reg</span>
+          </div>
+        </div>
+        <div class="kpi-value">{{ checked_in_attendees }}</div>
+        <div class="kpi-meta">
+          <div class="progress flex-grow-1" style="height: 6px;">
+            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ check_in_rate }}%;"></div>
+          </div>
+          <span class="font-mono-data small text-muted-variant">{{ check_in_rate }}%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 5: Available Assets -->
+    <div class="col-6 col-lg-4 col-xxl-2">
+      <div class="stitch-card kpi-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="kpi-title">Assets</span>
+          <div class="kpi-icon-wrap">
+            <span class="material-symbols-outlined">inventory_2</span>
+          </div>
+        </div>
+        <div class="kpi-value">{{ available_resources }}<span class="small fw-normal text-muted-variant">/{{ total_resources }}</span></div>
+        <div class="kpi-meta">
+          <span class="badge bg-secondary-subtle text-secondary font-mono-data rounded-pill">{{ resource_ready_rate }}% ready</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 6: Critical Conflicts -->
+    <div class="col-6 col-lg-4 col-xxl-2">
+      <div class="stitch-card kpi-card {% if active_conflicts_count > 0 %}border-danger-subtle{% endif %}" style="{% if active_conflicts_count > 0 %}background-color: var(--error-container);{% endif %}">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="kpi-title {% if active_conflicts_count > 0 %}text-danger{% endif %}">Conflicts</span>
+          <div class="kpi-icon-wrap bg-white text-danger">
+            <span class="material-symbols-outlined">warning</span>
+          </div>
+        </div>
+        <div class="kpi-value {% if active_conflicts_count > 0 %}text-danger{% endif %}">{{ active_conflicts_count|stringformat:"02d" }}</div>
+        <div class="kpi-meta text-danger">
+          <span class="material-symbols-outlined" style="font-size: 14px;">priority_high</span>
+          <span class="fw-semibold">{% if active_conflicts_count > 0 %}Action required{% else %}Clear{% endif %}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget Statistics Ribbon -->
+  <div class="stitch-card p-3" style="background-color: var(--surface-container-low);">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-3">
+        <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Allocated Budget</span>
+        <div class="h5 fw-bold font-mono-data text-primary mb-0">${{ total_budget|floatformat:2 }}</div>
+      </div>
+      <div class="col-md-3">
+        <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Committed Expenses</span>
+        <div class="h5 fw-bold font-mono-data text-secondary mb-0">${{ total_expenses|floatformat:2 }}</div>
+      </div>
+      <div class="col-md-3">
+        <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Remaining Runway</span>
+        <div class="h5 fw-bold font-mono-data text-success mb-0">${{ budget_remaining|floatformat:2 }}</div>
+      </div>
+      <div class="col-md-3">
+        <div class="d-flex justify-content-between align-items-center small mb-1">
+          <span class="text-muted-variant fw-semibold">Utilization Rate</span>
+          <span class="font-mono-data fw-bold text-primary">{{ budget_utilization }}%</span>
+        </div>
+        <div class="progress" style="height: 6px;">
+          <div class="progress-bar bg-primary" style="width: {{ budget_utilization }}%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Dynamic Workspace: 8-col / 4-col split -->
+  <div class="row g-4">
+    <!-- Left Column (8 cols) -->
+    <div class="col-xl-8 d-flex flex-column gap-4">
+      <!-- Chart Container: Registrations vs Turnout -->
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Event Telemetry</span>
+            <h2 class="h5 fw-bold mb-0">Event Registration vs Real Turnout</h2>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2 small">
+              <span class="d-inline-block rounded-1" style="width: 10px; height: 10px; background-color: var(--primary);"></span>
+              <span>Registrations</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 small">
+              <span class="d-inline-block rounded-circle" style="width: 10px; height: 10px; background-color: var(--tertiary);"></span>
+              <span>Actual Turnout</span>
+            </div>
+          </div>
+        </div>
+        <div style="height: 240px; position: relative;">
+          <canvas id="turnoutChart"></canvas>
+        </div>
+        <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center small text-muted-variant">
+          <span>Overall Campus Turnout Ratio: <strong class="text-on-surface">{{ check_in_rate }}%</strong></span>
+          <span class="text-primary d-inline-flex align-items-center gap-1">
+            <span class="material-symbols-outlined" style="font-size: 16px;">verified</span>
+            Automated Badge Telemetry Synced
+          </span>
+        </div>
+      </div>
+
+      <!-- Resource Utilization by Category -->
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Inventory Capacity</span>
+            <h2 class="h5 fw-bold mb-0">Resource Utilization by Category</h2>
+          </div>
+          <span class="badge bg-light text-dark font-mono-data border px-3 py-1 rounded-pill">Peak Load: 85%</span>
+        </div>
+        <div class="row g-3">
+          <!-- AV Gauge -->
+          <div class="col-md-4">
+            <div class="p-3 rounded-3" style="background-color: var(--surface-container-low);">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-medium d-flex align-items-center gap-2">
+                  <span class="material-symbols-outlined text-primary" style="font-size: 18px;">videocam</span>
+                  Audio / Visual
+                </span>
+                <span class="font-mono-data fw-bold {% if av_rate >= 80 %}text-danger{% else %}text-primary{% endif %}">{{ av_rate }}%</span>
+              </div>
+              <div class="progress mb-2" style="height: 6px;">
+                <div class="progress-bar {% if av_rate >= 80 %}bg-danger{% else %}bg-primary{% endif %}" style="width: {{ av_rate }}%;"></div>
+              </div>
+              <div class="d-flex justify-content-between small text-muted-variant font-mono-data" style="font-size: 11px;">
+                <span>{{ av_assigned }} / {{ av_total }} Units In-Use</span>
+                <span class="{% if av_rate >= 80 %}text-danger fw-semibold{% endif %}">{% if av_rate >= 80 %}High Load{% else %}Optimal{% endif %}</span>
+              </div>
+            </div>
+          </div>
+          <!-- Auditorium Gauge -->
+          <div class="col-md-4">
+            <div class="p-3 rounded-3" style="background-color: var(--surface-container-low);">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-medium d-flex align-items-center gap-2">
+                  <span class="material-symbols-outlined text-primary" style="font-size: 18px;">theater_comedy</span>
+                  Auditoriums
+                </span>
+                <span class="font-mono-data fw-bold text-primary">{{ aud_rate }}%</span>
+              </div>
+              <div class="progress mb-2" style="height: 6px;">
+                <div class="progress-bar bg-primary" style="width: {{ aud_rate }}%;"></div>
+              </div>
+              <div class="d-flex justify-content-between small text-muted-variant font-mono-data" style="font-size: 11px;">
+                <span>{{ aud_assigned }} / {{ aud_total }} Reserved</span>
+                <span class="text-primary fw-semibold">High Traffic</span>
+              </div>
+            </div>
+          </div>
+          <!-- Furniture Gauge -->
+          <div class="col-md-4">
+            <div class="p-3 rounded-3" style="background-color: var(--surface-container-low);">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-medium d-flex align-items-center gap-2">
+                  <span class="material-symbols-outlined text-primary" style="font-size: 18px;">table_restaurant</span>
+                  Tables &amp; Chairs
+                </span>
+                <span class="font-mono-data fw-bold text-info">{{ furniture_rate }}%</span>
+              </div>
+              <div class="progress mb-2" style="height: 6px;">
+                <div class="progress-bar bg-info" style="width: {{ furniture_rate }}%;"></div>
+              </div>
+              <div class="d-flex justify-content-between small text-muted-variant font-mono-data" style="font-size: 11px;">
+                <span>{{ furniture_assigned }} / {{ furniture_total }} Placements</span>
+                <span>Ample Surplus</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Priority Events Table -->
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Master Schedule</span>
+            <h2 class="h5 fw-bold mb-0">Upcoming Priority Events</h2>
+          </div>
+          <a href="{% url 'events:list' %}" class="btn btn-sm btn-link text-primary text-decoration-none fw-semibold d-inline-flex align-items-center gap-1">
+            <span>View Full Calendar</span>
+            <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+          </a>
+        </div>
+        <div class="table-responsive">
+          <table class="stitch-table">
+            <thead>
+              <tr>
+                <th>Event &amp; Timeline</th>
+                <th>Location / Venue</th>
+                <th>RSVP Capacity</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in upcoming_events %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="rounded-2 p-2 text-center" style="background-color: var(--surface-container-low); width: 44px;">
+                        <div class="font-mono-data text-uppercase" style="font-size: 9px; line-height: 1;">{{ ev.date|date:"M" }}</div>
+                        <div class="fw-bold fs-6 text-primary" style="line-height: 1.1;">{{ ev.date|date:"d" }}</div>
+                      </div>
+                      <div>
+                        <div class="fw-semibold">{{ ev.name }}</div>
+                        <div class="small text-muted-variant">{{ ev.start_time|time:"H:i" }} – {{ ev.end_time|time:"H:i" }} · {{ ev.category }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="material-symbols-outlined text-primary" style="font-size: 16px;">domain</span>
+                      <span>{{ ev.venue }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="width: 120px;">
+                      <div class="d-flex justify-content-between font-mono-data small fw-semibold">
+                        <span>{{ ev.registered_count }}</span>
+                        <span class="text-muted-variant font-normal">/ {{ ev.capacity }}</span>
+                      </div>
+                      <div class="progress" style="height: 5px;">
+                        <div class="progress-bar {% if ev.capacity_percentage >= 90 %}bg-danger{% elif ev.capacity_percentage >= 70 %}bg-primary{% else %}bg-info{% endif %}" style="width: {{ ev.capacity_percentage }}%;"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="status-pill {% if ev.status == 'Upcoming' or ev.status == 'Confirmed' %}status-confirmed{% elif ev.status == 'Draft' %}status-warning{% else %}status-info{% endif %}">
+                      <span class="dot"></span> {{ ev.status }}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'events:list' %}" class="btn btn-sm btn-light border py-1 px-2 rounded-2">Details</a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center py-4 text-muted-variant">No upcoming events scheduled.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column (4 cols) -->
+    <div class="col-xl-4 d-flex flex-column gap-4">
+      <!-- Critical System Alerts -->
+      <div class="d-flex flex-column gap-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <h2 class="h6 fw-bold mb-0 d-flex align-items-center gap-2">
+            <span class="material-symbols-outlined text-danger">notification_important</span>
+            Critical System Alerts
+          </h2>
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-mono-data">{{ active_conflicts_count }} Live</span>
+        </div>
+
+        {% for conflict in active_conflicts %}
+          <div class="conflict-alert-card mb-2">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="badge bg-danger text-white rounded-1 font-mono-data text-uppercase" style="font-size: 10px;">Resource Conflict</span>
+              <span class="small text-muted-variant font-mono-data">{{ conflict.conflict_date|date:"M d" }}</span>
+            </div>
+            <p class="small text-on-surface mb-3">
+              <strong>{{ conflict.resource.name }}:</strong> {{ conflict.description }}
+            </p>
+            <div class="d-flex gap-2">
+              <a href="{% url 'resources:conflicts' %}" class="btn btn-primary-stitch btn-sm flex-grow-1 py-1 rounded-2 text-center text-decoration-none">Resolve Conflict</a>
+              <a href="{% url 'resources:allocations' %}" class="btn btn-light border btn-sm flex-grow-1 py-1 rounded-2 text-center text-decoration-none">Reassign</a>
+            </div>
+          </div>
+        {% empty %}
+          <div class="p-3 rounded-3 text-center bg-white border text-muted-variant small">
+            <span class="material-symbols-outlined text-success mb-1" style="font-size: 24px;">check_circle</span>
+            <div>No active resource conflicts detected.</div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Live Operations Stream -->
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Real-Time Audit</span>
+            <h2 class="h6 fw-bold mb-0">Live Operations Stream</h2>
+          </div>
+          <div class="d-flex align-items-center gap-1 font-mono-data text-primary" style="font-size: 11px;">
+            <span class="badge bg-primary rounded-circle p-1"></span>
+            <span>Live Feed</span>
+          </div>
+        </div>
+        <div class="d-flex flex-column gap-3">
+          {% for chk in recent_checkins %}
+            <div class="d-flex align-items-start gap-3">
+              <span class="material-symbols-outlined text-primary p-1 bg-light rounded-circle" style="font-size: 18px;">person_check</span>
+              <div>
+                <div class="small text-on-surface"><strong>{{ chk.registration.name }}</strong> <span class="font-mono-data text-muted-variant">({{ chk.ticket_id }})</span> checked in</div>
+                <div class="small text-muted-variant font-mono-data" style="font-size: 11px;">{{ chk.check_in_time|timesince }} ago · {{ chk.registration.event.name|truncatechars:24 }}</div>
+              </div>
+            </div>
+          {% endfor %}
+
+          {% for exp in recent_expenses %}
+            <div class="d-flex align-items-start gap-3">
+              <span class="material-symbols-outlined text-info p-1 bg-light rounded-circle" style="font-size: 18px;">receipt_long</span>
+              <div>
+                <div class="small text-on-surface">Expense committed: <strong>{{ exp.description|truncatechars:30 }}</strong> (${{ exp.amount|floatformat:0 }})</div>
+                <div class="small text-muted-variant font-mono-data" style="font-size: 11px;">{{ exp.created_date|timesince }} ago · {{ exp.vendor.name|default:"General Vendor" }}</div>
+              </div>
+            </div>
+          {% endfor %}
+
+          {% for notif in recent_notifications %}
+            <div class="d-flex align-items-start gap-3">
+              <span class="material-symbols-outlined text-warning p-1 bg-light rounded-circle" style="font-size: 18px;">notifications</span>
+              <div>
+                <div class="small text-on-surface">{{ notif.title }}</div>
+                <div class="small text-muted-variant font-mono-data" style="font-size: 11px;">{{ notif.created_at|timesince }} ago</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Venue Readiness -->
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <span class="text-uppercase tracking-wider small fw-semibold text-muted-variant">Immediate Dispatch</span>
+            <h2 class="h6 fw-bold mb-0">Venue Readiness</h2>
+          </div>
+          <span class="material-symbols-outlined text-muted-variant">meeting_room</span>
+        </div>
+        <div class="d-flex flex-column gap-2">
+          <div class="d-flex align-items-center justify-content-between p-2 rounded-2" style="background-color: var(--surface-container-low);">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-primary rounded-circle p-1"></span>
+              <div>
+                <div class="fw-semibold small">Main Hall A</div>
+                <div class="small text-muted-variant" style="font-size: 11px;">Tech Summit Staging Underway</div>
+              </div>
+            </div>
+            <span class="badge bg-secondary-subtle text-secondary rounded-1 font-mono-data">Staging</span>
+          </div>
+          <div class="d-flex align-items-center justify-content-between p-2 rounded-2" style="background-color: var(--surface-container-low);">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-success rounded-circle p-1"></span>
+              <div>
+                <div class="fw-semibold small">Health Sciences Amphitheater</div>
+                <div class="small text-muted-variant" style="font-size: 11px;">A/V Hardware Check Completed</div>
+              </div>
+            </div>
+            <span class="badge bg-success-subtle text-success rounded-1 font-mono-data">Ready</span>
+          </div>
+          <div class="d-flex align-items-center justify-content-between p-2 rounded-2" style="background-color: var(--surface-container-low);">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-danger rounded-circle p-1"></span>
+              <div>
+                <div class="fw-semibold small">Main Hall B</div>
+                <div class="small text-muted-variant" style="font-size: 11px;">Projector 4K Clashing Detected</div>
+              </div>
+            </div>
+            <span class="badge bg-danger-subtle text-danger rounded-1 font-mono-data">Conflict</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Chart.js dynamic telemetry using real database data
+  document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('turnoutChart');
+    if (ctx) {
+      const labels = {{ chart_labels|safe }};
+      const regsData = {{ chart_regs|safe }};
+      const turnoutData = {{ chart_turnout|safe }};
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Registrations',
+              data: regsData,
+              borderColor: '#1d4ed8',
+              backgroundColor: 'rgba(29, 78, 216, 0.1)',
+              fill: true,
+              tension: 0.35,
+              pointBackgroundColor: '#1d4ed8',
+              pointRadius: 4,
+            },
+            {
+              label: 'Actual Turnout',
+              data: turnoutData,
+              borderColor: '#004870',
+              borderDash: [5, 5],
+              fill: false,
+              tension: 0.35,
+              pointBackgroundColor: '#004870',
+              pointRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { family: 'Inter', size: 11 } }
+            },
+            y: {
+              grid: { color: '#eff4ff' },
+              ticks: { font: { family: 'JetBrains Mono', size: 11 } }
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

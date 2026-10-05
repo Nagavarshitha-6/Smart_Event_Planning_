@@ -1,0 +1,432 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Conflict Detection & Resource Allocation Engine | EventCore Platform{% endblock %}
+{% block breadcrumb %}Conflict Detection{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 1720px; margin: 0 auto; width: 100%;">
+
+  <!-- Top Action & Engine Telemetry Header -->
+  <div class="d-flex flex-column flex-lg-row lg:align-items-end justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        {% if active_count > 0 %}
+          <span class="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-danger" style="background-color: #fee2e2; font-size: 11px;">
+            <span class="spinner-grow spinner-grow-sm me-1" role="status" style="width: 8px; height: 8px; color: #dc2626;"></span>
+            Active Collision Detected ({{ active_count }})
+          </span>
+        {% else %}
+          <span class="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1 text-success" style="background-color: #ecfdf5; font-size: 11px;">
+            <span class="material-symbols-outlined text-success" style="font-size: 14px;">check_circle</span>
+            Clean Pre-flight Clearance
+          </span>
+        {% endif %}
+        <span class="font-mono-data small text-muted-variant">ENGINE_BUILD // 4.19.8-LTS</span>
+      </div>
+      <h1 class="display-title mb-1">Conflict Detection & Resource Allocation Engine</h1>
+      <p class="text-muted-variant mb-0">Automated temporal and physical asset collision analysis across university events.</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <form method="post" action="{% url 'resources:run_audit' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-secondary bg-white d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 shadow-sm border-0">
+          <span class="material-symbols-outlined text-primary" style="font-size: 18px;">sync</span>
+          <span>Re-run Collision Detection</span>
+        </button>
+      </form>
+      <a href="{% url 'resources:export_csv' %}" class="btn btn-outline-secondary bg-white d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 shadow-sm border-0">
+        <span class="material-symbols-outlined text-tertiary" style="font-size: 18px;">description</span>
+        <span>Export Conflict Audit Report</span>
+      </a>
+      <a href="{% url 'resources:create_allocation' %}" class="btn btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 shadow-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+        <span>New Allocation</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Live Status Overview Metrics (4 Cards matching Stitch) -->
+  <div class="row g-3">
+    <!-- Card 1: High-Severity Blockers -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant fw-medium">High-Severity Blockers</span>
+          <div class="rounded-3 p-1.5 d-flex align-items-center justify-content-center" style="background-color: #fee2e2; color: #dc2626; width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">error</span>
+          </div>
+        </div>
+        <div class="mt-3 d-flex align-items-baseline gap-2">
+          <span class="h2 fw-bold text-danger tracking-tight mb-0">{% if active_count < 10 %}0{{ active_count }}{% else %}{{ active_count }}{% endif %}</span>
+          <span class="small text-muted-variant">Assets locked</span>
+        </div>
+        <div class="mt-2 pt-2 border-top d-flex align-items-center gap-1 text-danger small">
+          <span class="rounded-circle bg-danger" style="width: 6px; height: 6px;"></span>
+          <span>Requires manual resolution or shift</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Turnaround Threshold Violations -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant fw-medium">Turnaround Threshold Violations</span>
+          <div class="rounded-3 p-1.5 bg-light text-secondary d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">timelapse</span>
+          </div>
+        </div>
+        <div class="mt-3 d-flex align-items-baseline gap-2">
+          <span class="h2 fw-bold text-dark tracking-tight mb-0">0{{ turnaround_violations_count }}</span>
+          <span class="small text-muted-variant">&lt; 15 min teardown gap</span>
+        </div>
+        <div class="mt-2 pt-2 border-top d-flex align-items-center gap-1 text-muted-variant small">
+          <span class="rounded-circle bg-secondary" style="width: 6px; height: 6px;"></span>
+          <span>Auto-cleared buffer available</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Total Monitored Nodes -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant fw-medium">Total Monitored Nodes</span>
+          <div class="rounded-3 p-1.5 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">layers</span>
+          </div>
+        </div>
+        <div class="mt-3 d-flex align-items-baseline gap-2">
+          <span class="h2 fw-bold text-dark tracking-tight mb-0">{{ total_monitored }}</span>
+          <span class="small text-muted-variant">Allocated Assets</span>
+        </div>
+        <div class="mt-2 pt-2 border-top d-flex align-items-center gap-1 text-success small font-mono-data">
+          <span>98.6% conflict-free envelope</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Pre-flight Status -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant fw-medium">Pre-flight System Status</span>
+          <div class="rounded-3 p-1.5 d-flex align-items-center justify-content-center" style="background-color: #ecfdf5; color: #10b981; width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">verified</span>
+          </div>
+        </div>
+        <div class="mt-3 d-flex align-items-baseline gap-2">
+          <span class="h4 fw-bold text-dark tracking-tight mb-0">Real-Time Sync</span>
+        </div>
+        <div class="mt-2 pt-2 border-top d-flex align-items-center justify-content-between small text-muted-variant">
+          <span>Engine Latency</span>
+          <span class="font-mono-data text-success fw-semibold">42ms</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Notification Panels (High-Alert Conflict & Clean Pre-flight) -->
+  <div class="d-flex flex-column gap-3">
+    {% if primary_conflict %}
+      <!-- RED ERROR PANEL: Critical Conflict Detected (Matching Stitch Design) -->
+      <div class="stitch-card p-0 overflow-hidden shadow-md" style="border: 2px solid #fecdd3; background-color: #fffafb;">
+        <div class="p-4 bg-danger bg-opacity-10 border-bottom d-flex flex-column sm:flex-row sm:align-items-center justify-content-between gap-3">
+          <div class="d-flex align-items-start gap-3">
+            <div class="rounded-3 bg-danger text-white d-flex align-items-center justify-content-center shadow-sm shrink-0" style="width: 44px; height: 44px;">
+              <span class="material-symbols-outlined" style="font-size: 26px;">warning</span>
+            </div>
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h2 class="h5 fw-bold mb-0 text-danger">Resource Conflict Detected</h2>
+                <span class="badge bg-danger text-white font-mono-data px-2 py-0.5" style="font-size: 11px;">Severity: High</span>
+                <span class="badge bg-white text-muted border font-mono-data" style="font-size: 11px;">ID: CNF-2026-0{{ primary_conflict.id }}</span>
+              </div>
+              <p class="text-secondary small mb-0">
+                Conflict Details: <strong class="text-dark">{{ primary_conflict.resource.name }}</strong> ({{ primary_conflict.resource.resource_id }}) is double-allocated on <span class="font-mono-data text-dark fw-bold">{{ primary_conflict.conflict_date|date:"F d, Y" }}</span>.
+              </p>
+            </div>
+          </div>
+          <div class="px-3 py-1.5 rounded-3 bg-white border d-inline-flex align-items-center gap-1.5 font-mono-data text-danger fw-bold small align-self-start sm:align-self-auto shadow-sm">
+            <span class="material-symbols-outlined" style="font-size: 16px;">schedule</span>
+            <span>DIRECT COLLISION</span>
+          </div>
+        </div>
+
+        <!-- Overlapping Events Comparison Cards Side-by-Side -->
+        <div class="p-4">
+          <div class="row g-3">
+            <!-- Event A (Primary Lock) -->
+            <div class="col-md-6">
+              <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between bg-white border">
+                <div class="d-flex align-items-start justify-content-between gap-2">
+                  <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-mono-data px-2 py-0.5" style="font-size: 11px;">Primary Lock</span>
+                      <span class="font-mono-data small text-muted">{{ primary_conflict.event_a.event_id }}</span>
+                    </div>
+                    <h3 class="h6 fw-bold text-dark mb-0">{{ primary_conflict.event_a.name }}</h3>
+                  </div>
+                  <span class="material-symbols-outlined text-primary" style="font-size: 24px;">event</span>
+                </div>
+
+                <div class="row g-2 mt-3 pt-2 border-top small">
+                  <div class="col-6">
+                    <span class="text-muted d-block font-mono-data" style="font-size: 11px;">VENUE SPACE</span>
+                    <span class="fw-semibold text-dark">{{ primary_conflict.event_a.venue }}</span>
+                  </div>
+                  <div class="col-6">
+                    <span class="text-muted d-block font-mono-data" style="font-size: 11px;">COORDINATOR</span>
+                    <span class="fw-semibold text-dark">{% if primary_conflict.event_a.created_by %}{{ primary_conflict.event_a.created_by.get_full_name|default:primary_conflict.event_a.created_by.username }}{% else %}Operations{% endif %}</span>
+                  </div>
+                </div>
+
+                <div class="p-2 mt-3 rounded-2 bg-light d-flex align-items-center justify-content-between font-mono-data small">
+                  <span>Timestamp: {{ primary_conflict.time_a }}</span>
+                  <span class="text-primary fw-semibold">Priority 1 (Academic)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Event B (Colliding Request) -->
+            <div class="col-md-6">
+              <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between bg-white border" style="border-color: #fecdd3 !important;">
+                <div class="d-flex align-items-start justify-content-between gap-2">
+                  <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <span class="badge bg-danger text-white font-mono-data px-2 py-0.5" style="font-size: 11px;">Colliding Request</span>
+                      <span class="font-mono-data small text-muted">{{ primary_conflict.event_b.event_id }}</span>
+                    </div>
+                    <h3 class="h6 fw-bold text-dark mb-0">{{ primary_conflict.event_b.name }}</h3>
+                  </div>
+                  <span class="material-symbols-outlined text-danger" style="font-size: 24px;">error</span>
+                </div>
+
+                <div class="row g-2 mt-3 pt-2 border-top small">
+                  <div class="col-6">
+                    <span class="text-muted d-block font-mono-data" style="font-size: 11px;">VENUE SPACE</span>
+                    <span class="fw-semibold text-dark">{{ primary_conflict.event_b.venue }}</span>
+                  </div>
+                  <div class="col-6">
+                    <span class="text-muted d-block font-mono-data" style="font-size: 11px;">COORDINATOR</span>
+                    <span class="fw-semibold text-dark">{% if primary_conflict.event_b.created_by %}{{ primary_conflict.event_b.created_by.get_full_name|default:primary_conflict.event_b.created_by.username }}{% else %}Liaison{% endif %}</span>
+                  </div>
+                </div>
+
+                <div class="p-2 mt-3 rounded-2 bg-danger-subtle text-danger d-flex align-items-center justify-content-between font-mono-data small">
+                  <span>Timestamp: {{ primary_conflict.time_b }}</span>
+                  <span class="fw-bold">Direct Overlap</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Suggested Immediate Action Pathways (Matching Stitch) -->
+          <div class="mt-4 pt-3 border-top d-flex flex-column flex-lg-row lg:align-items-center justify-content-between gap-3">
+            <span class="small fw-bold text-secondary d-flex align-items-center gap-1.5 font-mono-data">
+              <span class="material-symbols-outlined text-primary" style="font-size: 18px;">auto_fix_high</span>
+              Engine Suggested Resolution Pathways:
+            </span>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <!-- Pathway 1: Assign Alternative -->
+              <form method="post" action="{% url 'resources:resolve_conflict' primary_conflict.id %}" class="m-0">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="swap">
+                {% if alternative_resources %}
+                  <input type="hidden" name="alt_resource_id" value="{{ alternative_resources.0.id }}">
+                  <button type="submit" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2 shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">swap_horiz</span>
+                    <span>Assign Alternative: {{ alternative_resources.0.name }}</span>
+                  </button>
+                {% else %}
+                  <button type="submit" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2 shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">swap_horiz</span>
+                    <span>Assign Available Alternative Asset</span>
+                  </button>
+                {% endif %}
+              </form>
+
+              <!-- Pathway 2: Shift Conflicting Time -->
+              <form method="post" action="{% url 'resources:resolve_conflict' primary_conflict.id %}" class="m-0">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="shift">
+                <button type="submit" class="btn btn-sm btn-outline-secondary bg-white d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2 shadow-sm">
+                  <span class="material-symbols-outlined" style="font-size: 16px;">schedule</span>
+                  <span>Shift Schedule to 01:00 PM</span>
+                </button>
+              </form>
+
+              <!-- Pathway 3: Cancel Duplicate Allocation -->
+              <form method="post" action="{% url 'resources:resolve_conflict' primary_conflict.id %}" class="m-0">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel">
+                <button type="submit" class="btn btn-sm btn-outline-danger bg-white d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2 shadow-sm" onclick="return confirm('Release conflicting allocation for {{ primary_conflict.event_b.name }}?')">
+                  <span class="material-symbols-outlined" style="font-size: 16px;">cancel</span>
+                  <span>Release Request</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <!-- GREEN SUCCESS PANEL: Clean Pre-flight Check Passed (Matching Stitch) -->
+      <div class="stitch-card p-4 d-flex flex-column sm:flex-row sm:align-items-center justify-content-between gap-3" style="background-color: #ecfdf5; border-left: 5px solid #10b981 !important;">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-3 bg-success text-white d-flex align-items-center justify-content-center shadow-sm shrink-0" style="width: 44px; height: 44px;">
+            <span class="material-symbols-outlined" style="font-size: 26px;">check_circle</span>
+          </div>
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h2 class="h6 fw-bold mb-0 text-success-emphasis">Resource Pre-flight Check Passed</h2>
+              <span class="badge bg-success text-white font-mono-data px-2 py-0.5" style="font-size: 11px;">Clean Clearance</span>
+            </div>
+            <p class="small text-secondary mb-0">
+              All monitored campus equipment, halls, and AV hardware have zero conflicting schedules across active sessions.
+            </p>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 align-self-start sm:align-self-auto">
+          <span class="font-mono-data small text-muted px-2.5 py-1 rounded bg-white border">Buffer Windows OK</span>
+          <a href="{% url 'resources:allocations' %}" class="btn btn-sm btn-success px-3 py-1.5 rounded-2 d-inline-flex align-items-center gap-1 shadow-sm">
+            <span>View Timeline</span>
+            <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Active Discrepancy Queue Table -->
+  <div class="stitch-card p-0 overflow-hidden">
+    <div class="px-4 py-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <span class="material-symbols-outlined text-danger" style="font-size: 20px;">warning</span>
+        <h2 class="h6 fw-bold mb-0 text-dark">Active Discrepancy Queue</h2>
+      </div>
+      <span class="badge bg-secondary-subtle text-dark font-mono-data">{{ active_conflicts|length }} Total Flagged</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle mb-0 stitch-table">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4">Conflict ID</th>
+            <th>Affected Resource</th>
+            <th>Primary Event</th>
+            <th>Conflicting Event</th>
+            <th>Collision Window</th>
+            <th>Severity</th>
+            <th>Status</th>
+            <th class="text-end pe-4">Resolution</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if active_conflicts %}
+            {% for c in active_conflicts %}
+              <tr>
+                <td class="ps-4 font-mono-data fw-bold text-primary">CNF-2026-0{{ c.id }}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="material-symbols-outlined text-secondary" style="font-size: 18px;">videocam</span>
+                    <div>
+                      <span class="fw-semibold text-dark d-block">{{ c.resource.name }}</span>
+                      <span class="font-mono-data small text-muted" style="font-size: 11px;">{{ c.resource.resource_id }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <a href="{% url 'events:detail' c.event_a.id %}" class="fw-medium text-dark text-decoration-none d-block">
+                    {{ c.event_a.name }}
+                  </a>
+                  <span class="small text-muted">{{ c.event_a.venue }}</span>
+                </td>
+                <td>
+                  <a href="{% url 'events:detail' c.event_b.id %}" class="fw-bold text-danger text-decoration-none d-block">
+                    {{ c.event_b.name }}
+                  </a>
+                  <span class="small text-muted">{{ c.event_b.venue }}</span>
+                </td>
+                <td>
+                  <div class="font-mono-data fw-semibold text-dark">{{ c.conflict_date|date:"M d, Y" }}</div>
+                  <div class="font-mono-data small text-muted">{{ c.time_a }}</div>
+                </td>
+                <td>
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 rounded-pill small fw-semibold">
+                    Critical - Overlap
+                  </span>
+                </td>
+                <td>
+                  <span class="d-inline-flex align-items-center gap-1 text-danger small fw-semibold">
+                    <span class="rounded-circle bg-danger" style="width: 6px; height: 6px;"></span>
+                    Unresolved
+                  </span>
+                </td>
+                <td class="text-end pe-4">
+                  <form method="post" action="{% url 'resources:resolve_conflict' c.id %}" class="d-inline-flex gap-1">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="swap">
+                    <button type="submit" class="btn btn-sm btn-primary px-2.5 py-1 rounded-2 shadow-sm font-mono-data" style="font-size: 11px;" title="Swap to alternative resource">
+                      Swap Alt
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center py-5">
+                <span class="material-symbols-outlined text-success mb-2" style="font-size: 40px;">task_alt</span>
+                <div class="fw-semibold text-dark">All clear! No collisions detected</div>
+                <div class="small text-muted">The resource allocation engine found zero double-booking conflicts.</div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Historical Resolved Log Table -->
+  {% if resolved_conflicts %}
+    <div class="stitch-card p-0 overflow-hidden">
+      <div class="px-4 py-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+        <h3 class="h6 fw-bold mb-0 text-dark">Resolved Discrepancy Log (Audit Trail)</h3>
+        <span class="font-mono-data small text-muted">Audited</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0 small stitch-table">
+          <thead class="bg-light text-muted font-mono-data">
+            <tr>
+              <th class="ps-4">Resource</th>
+              <th>Date</th>
+              <th>Events Involved</th>
+              <th>Resolution Detail</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rc in resolved_conflicts %}
+              <tr>
+                <td class="ps-4 font-mono-data fw-semibold text-dark">{{ rc.resource.name }}</td>
+                <td class="font-mono-data text-muted">{{ rc.conflict_date|date:"Y-m-d" }}</td>
+                <td>{{ rc.event_a.name }} &amp; {{ rc.event_b.name }}</td>
+                <td class="text-muted">{{ rc.description }}</td>
+                <td>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill font-mono-data" style="font-size: 11px;">
+                    ✓ Resolved
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Edit Registration: {{ reg.name }}{% else %}Register New Attendee{% endif %} | EventCore Platform{% endblock %}
+{% block breadcrumb %}{% if is_edit %}Edit Registration{% else %}Register Attendee{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 860px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="d-flex flex-column flex-sm-row sm:items-center justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">{% if is_edit %}edit_note{% else %}person_add{% endif %}</span>
+        <span class="text-uppercase tracking-wider">{% if is_edit %}Credential Modification{% else %}Guest & Attendee Ingress{% endif %}</span>
+      </div>
+      <h1 class="display-title mb-1">{% if is_edit %}Edit Registration{% else %}Register New Attendee{% endif %}</h1>
+      <p class="text-muted-variant mb-0">Issue authorized gate credentials, assign seating tier, and configure attendee contact records.</p>
+    </div>
+    <a href="{% url 'registrations:list' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2 align-self-start">
+      <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+      <span>Back to Registry</span>
+    </a>
+  </div>
+
+  <!-- Form Card -->
+  <div class="stitch-card p-4">
+    {% if form.errors %}
+      <div class="alert alert-danger small py-2 px-3 mb-4 rounded-2" role="alert">
+        <div class="fw-semibold">Please correct the following errors:</div>
+        <ul class="mb-0 mt-1 ps-3">
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" action="">
+      {% csrf_token %}
+
+      <!-- Section: Event Assignment -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">event_seat</span>
+          <span>Target Event & Session</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-12">
+            <label for="{{ form.event.id_for_label }}" class="form-stitch-label">Assigned Event <span class="text-danger">*</span></label>
+            {{ form.event }}
+            <span class="small text-muted-variant mt-1 d-block" style="font-size: 11px;">
+              Select the scheduled session or conference. Maximum capacity constraints apply automatically.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Attendee Information -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">badge</span>
+          <span>Attendee Contact Profile</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-12">
+            <label for="{{ form.name.id_for_label }}" class="form-stitch-label">Full Legal Name <span class="text-danger">*</span></label>
+            {{ form.name }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.email.id_for_label }}" class="form-stitch-label">Institutional / Primary Email <span class="text-danger">*</span></label>
+            {{ form.email }}
+            <span class="small text-muted-variant mt-1 d-block" style="font-size: 11px;">
+              Unique per event. Confirmation pass and QR barcode link will be dispatched here.
+            </span>
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.phone.id_for_label }}" class="form-stitch-label">Phone Number</label>
+            {{ form.phone }}
+            <span class="small text-muted-variant mt-1 d-block" style="font-size: 11px;">Optional mobile contact for real-time schedule alerts.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Credential & Gate Status -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">qr_code_2</span>
+          <span>Security Pass & Gate Status</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="{{ form.ticket_id.id_for_label }}" class="form-stitch-label">Ticket ID / RFID Code <span class="text-danger">*</span></label>
+            {{ form.ticket_id }}
+            <span class="small text-muted-variant mt-1 d-block font-mono-data" style="font-size: 11px;">
+              Monospaced barcode/optical identifier (e.g., TKT-1042). Must be unique across all events.
+            </span>
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.status.id_for_label }}" class="form-stitch-label">Admission Status <span class="text-danger">*</span></label>
+            {{ form.status }}
+            <span class="small text-muted-variant mt-1 d-block" style="font-size: 11px;">
+              Setting to 'Checked In' automatically stamps gate admission records.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top">
+        <a href="{% if is_edit %}{% url 'registrations:detail' reg.id %}{% else %}{% url 'registrations:list' %}{% endif %}" class="btn btn-outline-secondary px-4 py-2 rounded-2">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 rounded-2 shadow-sm">
+          <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+          <span>{% if is_edit %}Save Changes{% else %}Issue Registration Pass{% endif %}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

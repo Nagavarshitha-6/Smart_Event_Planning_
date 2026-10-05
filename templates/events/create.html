@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Edit Event: {{ event.name }}{% else %}Create New Event{% endif %} | EventCore Platform{% endblock %}
+{% block breadcrumb %}{% if is_edit %}Edit Event{% else %}Create Event{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 900px; margin: 0 auto;">
+  <!-- Page Header -->
+  <div class="d-flex flex-column flex-sm-row sm:items-center justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">{% if is_edit %}edit{% else %}add_circle{% endif %}</span>
+        <span class="text-uppercase tracking-wider">{% if is_edit %}Event Modification{% else %}Operations Scheduling Core{% endif %}</span>
+      </div>
+      <h1 class="display-title mb-1">{% if is_edit %}Edit Event{% else %}Create New Event{% endif %}</h1>
+      <p class="text-muted-variant mb-0">Configure venue allocation, operational timeline, capacity, and logistical profile.</p>
+    </div>
+    <a href="{% url 'events:list' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2 align-self-start">
+      <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+      <span>Back to Events</span>
+    </a>
+  </div>
+
+  <!-- Form Container -->
+  <div class="stitch-card p-4">
+    {% if form.errors %}
+      <div class="alert alert-danger small py-2 px-3 mb-4 rounded-2" role="alert">
+        <div class="fw-semibold">Please correct the validation errors below:</div>
+        <ul class="mb-0 mt-1 ps-3">
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" action="">
+      {% csrf_token %}
+
+      <!-- Section 1: Identification & Metadata -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">info</span>
+          <span>General Information</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="{{ form.event_id.id_for_label }}" class="form-stitch-label">Event ID <span class="text-danger">*</span></label>
+            {{ form.event_id }}
+            <span class="small text-muted-variant mt-1 d-block font-mono-data" style="font-size: 11px;">Unique institutional identifier</span>
+          </div>
+          <div class="col-md-8">
+            <label for="{{ form.name.id_for_label }}" class="form-stitch-label">Event Name / Title <span class="text-danger">*</span></label>
+            {{ form.name }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.category.id_for_label }}" class="form-stitch-label">Category <span class="text-danger">*</span></label>
+            {{ form.category }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.status.id_for_label }}" class="form-stitch-label">Operational Status <span class="text-danger">*</span></label>
+            {{ form.status }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Venue & Capacity -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">location_on</span>
+          <span>Location &amp; Capacity</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label for="{{ form.venue.id_for_label }}" class="form-stitch-label">Venue / Room Assignment <span class="text-danger">*</span></label>
+            {{ form.venue }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.capacity.id_for_label }}" class="form-stitch-label">RSVP Capacity <span class="text-danger">*</span></label>
+            {{ form.capacity }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Date & Schedule -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">schedule</span>
+          <span>Schedule &amp; Timings</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="{{ form.date.id_for_label }}" class="form-stitch-label">Event Date <span class="text-danger">*</span></label>
+            {{ form.date }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.start_time.id_for_label }}" class="form-stitch-label">Start Time <span class="text-danger">*</span></label>
+            {{ form.start_time }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.end_time.id_for_label }}" class="form-stitch-label">End Time <span class="text-danger">*</span></label>
+            {{ form.end_time }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Operational Description -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">description</span>
+          <span>Logistical Overview &amp; Notes</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-12">
+            <label for="{{ form.description.id_for_label }}" class="form-stitch-label">Event Description</label>
+            {{ form.description }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Actions -->
+      <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+        <a href="{% if is_edit %}{% url 'events:detail' event.id %}{% else %}{% url 'events:list' %}{% endif %}" class="btn btn-outline-secondary px-4 py-2 rounded-2">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary-stitch px-4 py-2 rounded-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+          <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+          <span>{% if is_edit %}Save Changes{% else %}Create Event{% endif %}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

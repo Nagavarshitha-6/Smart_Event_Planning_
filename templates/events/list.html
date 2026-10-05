@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Events Management{% endblock %}
+{% block breadcrumb %}Events{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4">
+  <!-- Top Action Area -->
+  <div class="d-flex flex-column flex-md-row md:items-end justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">calendar_month</span>
+        <span class="text-uppercase tracking-wider">Operations Scheduling Core</span>
+      </div>
+      <h1 class="display-title mb-1">Events Management</h1>
+      <p class="text-muted-variant mb-0">Oversee university venues, resource commitments, and real-time campus registrations.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="{% url 'events:export_csv' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">file_download</span>
+        <span>Export CSV</span>
+      </a>
+      <a href="{% url 'events:create' %}" class="btn btn-primary-stitch d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2 shadow-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">add_circle</span>
+        <span>Create Event</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Pulse Overview -->
+  <div class="row g-3">
+    <div class="col-6 col-lg-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kpi-title">Active Events</span>
+          <div class="kpi-value fs-4 mt-1">{{ active_events_count }}</div>
+          <span class="small text-primary d-inline-flex align-items-center gap-1 mt-1 font-mono-data">
+            <span class="material-symbols-outlined" style="font-size: 14px;">event_available</span> Active Runs
+          </span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 44px; height: 44px;">
+          <span class="material-symbols-outlined" style="font-size: 22px;">calendar_today</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kpi-title">Total Registrations</span>
+          <div class="kpi-value fs-4 mt-1">{{ total_registrations_count }}</div>
+          <span class="small text-muted-variant d-inline-flex align-items-center gap-1 mt-1 font-mono-data">
+            <span class="badge bg-primary rounded-circle p-1"></span> {{ reg_capacity_percentage }}% capacity
+          </span>
+        </div>
+        <div class="kpi-icon-wrap text-primary" style="width: 44px; height: 44px;">
+          <span class="material-symbols-outlined" style="font-size: 22px;">group</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kpi-title">Allocated Assets</span>
+          <div class="kpi-value fs-4 mt-1">{{ allocated_assets_count }}</div>
+          <span class="small text-secondary d-inline-flex align-items-center gap-1 mt-1 font-mono-data">
+            <span>Pinned resources</span>
+          </span>
+        </div>
+        <div class="kpi-icon-wrap text-secondary" style="width: 44px; height: 44px;">
+          <span class="material-symbols-outlined" style="font-size: 22px;">developer_board</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between {% if critical_conflicts_count > 0 %}border-danger-subtle{% endif %}" style="{% if critical_conflicts_count > 0 %}background-color: var(--error-container);{% endif %}">
+        <div>
+          <span class="kpi-title {% if critical_conflicts_count > 0 %}text-danger{% endif %}">Critical Conflicts</span>
+          <div class="kpi-value fs-4 mt-1 {% if critical_conflicts_count > 0 %}text-danger{% endif %}">{{ critical_conflicts_count|stringformat:"02d" }}</div>
+          <span class="small text-danger d-inline-flex align-items-center gap-1 mt-1 font-mono-data">
+            <span class="material-symbols-outlined" style="font-size: 14px;">warning</span> Resolution required
+          </span>
+        </div>
+        <div class="kpi-icon-wrap bg-white text-danger" style="width: 44px; height: 44px;">
+          <span class="material-symbols-outlined" style="font-size: 22px;">notification_important</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Toolbar Container -->
+  <div class="stitch-card p-3">
+    <form method="get" action="{% url 'events:list' %}" class="row g-2 align-items-center">
+      <!-- Search Input -->
+      <div class="col-12 col-lg-5">
+        <div class="position-relative">
+          <span class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y ms-3 text-muted-variant" style="font-size: 18px;">search</span>
+          <input type="text" name="q" value="{{ q }}" class="form-stitch-control ps-5" placeholder="Search by event name, ID, or venue...">
+        </div>
+      </div>
+
+      <!-- Status Dropdown -->
+      <div class="col-6 col-sm-3 col-lg-2">
+        <select name="status" class="form-stitch-control" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          {% for st in statuses %}
+            <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ st }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Category Dropdown -->
+      <div class="col-6 col-sm-3 col-lg-2">
+        <select name="category" class="form-stitch-control" onchange="this.form.submit()">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Submit & Reset -->
+      <div class="col-6 col-sm-3 col-lg-1">
+        <button type="submit" class="btn btn-light border w-100 py-2 rounded-2">Filter</button>
+      </div>
+
+      <!-- View Switcher -->
+      <div class="col-6 col-sm-3 col-lg-2 d-flex justify-content-end gap-1">
+        <a href="?q={{ q }}&status={{ status_filter }}&category={{ category_filter }}&view=table" class="btn btn-sm {% if view_mode == 'table' %}btn-primary{% else %}btn-light border{% endif %} px-3 py-2 rounded-2" title="Table View">
+          <span class="material-symbols-outlined" style="font-size: 16px;">view_list</span>
+        </a>
+        <a href="?q={{ q }}&status={{ status_filter }}&category={{ category_filter }}&view=cards" class="btn btn-sm {% if view_mode == 'cards' %}btn-primary{% else %}btn-light border{% endif %} px-3 py-2 rounded-2" title="Grid View">
+          <span class="material-symbols-outlined" style="font-size: 16px;">grid_view</span>
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Enterprise Event Data Table Section -->
+  {% if view_mode == 'cards' %}
+    <!-- Cards Layout -->
+    <div class="row g-3">
+      {% for ev in events %}
+        <div class="col-md-6 col-xl-4">
+          <div class="stitch-card h-100 d-flex flex-column justify-content-between p-4">
+            <div>
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-light text-primary font-mono-data border">{{ ev.event_id }}</span>
+                <span class="status-pill {% if ev.status == 'Upcoming' or ev.status == 'Confirmed' %}status-confirmed{% elif ev.status == 'Draft' %}status-warning{% elif ev.status == 'Cancelled' %}status-conflict{% else %}status-info{% endif %}">
+                  <span class="dot"></span> {{ ev.status }}
+                </span>
+              </div>
+              <h2 class="h5 fw-bold mb-1 text-on-surface">
+                <a href="{% url 'events:detail' ev.id %}" class="text-decoration-none text-on-surface hover:text-primary">{{ ev.name }}</a>
+              </h2>
+              <span class="badge bg-secondary-subtle text-secondary rounded-pill mb-3">{{ ev.category }}</span>
+              <p class="small text-muted-variant mb-3">{{ ev.description|truncatewords:16 }}</p>
+
+              <div class="small d-flex flex-column gap-1 text-muted-variant border-top pt-3">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="material-symbols-outlined text-primary" style="font-size: 16px;">calendar_today</span>
+                  <span>{{ ev.date|date:"M d, Y" }} · {{ ev.start_time|time:"H:i" }} - {{ ev.end_time|time:"H:i" }}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="material-symbols-outlined text-primary" style="font-size: 16px;">domain</span>
+                  <span>{{ ev.venue }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+              <div>
+                <span class="small font-mono-data text-muted-variant">{{ ev.registered_count }} / {{ ev.capacity }} RSVP</span>
+              </div>
+              <div class="d-flex gap-1">
+                <a href="{% url 'events:detail' ev.id %}" class="btn btn-sm btn-primary-stitch px-3 py-1 rounded-2">View</a>
+                <a href="{% url 'events:edit' ev.id %}" class="btn btn-sm btn-light border px-2 py-1 rounded-2">Edit</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12">
+          <div class="stitch-card p-5 text-center text-muted-variant">
+            No events found matching your filter criteria.
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <!-- Table Layout (Stitch Specification) -->
+    <div class="stitch-table-wrapper">
+      <div class="table-responsive">
+        <table class="stitch-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;" class="text-center">#</th>
+              <th>Event ID</th>
+              <th>Event Name &amp; Category</th>
+              <th>Schedule &amp; Time</th>
+              <th>Venue &amp; Room</th>
+              <th>RSVP Capacity</th>
+              <th class="text-center">Resources</th>
+              <th>Status</th>
+              <th class="text-end" style="width: 140px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ev in events %}
+              <tr>
+                <td class="text-center text-muted-variant font-mono-data small">{{ forloop.counter }}</td>
+                <td>
+                  <span class="font-mono-data text-primary fw-medium">{{ ev.event_id }}</span>
+                </td>
+                <td>
+                  <div class="d-flex flex-column">
+                    <a href="{% url 'events:detail' ev.id %}" class="fw-semibold text-on-surface text-decoration-none hover-primary">
+                      {{ ev.name }}
+                    </a>
+                    <div class="d-flex align-items-center gap-1 mt-0.5">
+                      <span class="badge bg-secondary-subtle text-secondary rounded-pill font-mono-data" style="font-size: 10px;">{{ ev.category }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex flex-column">
+                    <span class="fw-semibold">{{ ev.date|date:"M d, Y" }}</span>
+                    <span class="font-mono-data small text-muted-variant">{{ ev.start_time|time:"H:i" }} – {{ ev.end_time|time:"H:i" }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary" style="font-size: 16px;">domain</span>
+                    <span>{{ ev.venue }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div style="width: 130px;">
+                    <div class="d-flex justify-content-between font-mono-data small fw-semibold">
+                      <span>{{ ev.registered_count }}</span>
+                      <span class="text-muted-variant font-normal">/ {{ ev.capacity }}</span>
+                    </div>
+                    <div class="progress" style="height: 5px;">
+                      <div class="progress-bar {% if ev.capacity_percentage >= 90 %}bg-danger{% elif ev.capacity_percentage >= 70 %}bg-primary{% else %}bg-info{% endif %}" style="width: {{ ev.capacity_percentage }}%;"></div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <span class="badge bg-light text-dark border font-mono-data">
+                    {{ ev.resource_allocations.count }} Assets
+                  </span>
+                </td>
+                <td>
+                  <span class="status-pill {% if ev.status == 'Upcoming' or ev.status == 'Confirmed' %}status-confirmed{% elif ev.status == 'Draft' %}status-warning{% elif ev.status == 'Cancelled' %}status-conflict{% else %}status-info{% endif %}">
+                    <span class="dot"></span> {{ ev.status }}
+                  </span>
+                </td>
+                <td class="text-end">
+                  <div class="d-inline-flex align-items-center gap-1">
+                    <a href="{% url 'events:detail' ev.id %}" class="btn btn-sm btn-light border p-1 rounded-2" title="View Event Details">
+                      <span class="material-symbols-outlined" style="font-size: 18px;">visibility</span>
+                    </a>
+                    <a href="{% url 'events:edit' ev.id %}" class="btn btn-sm btn-light border p-1 rounded-2" title="Edit Event">
+                      <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+                    </a>
+                    <a href="{% url 'events:delete' ev.id %}" class="btn btn-sm btn-light border p-1 rounded-2 text-danger" title="Delete Event">
+                      <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="9" class="text-center py-5 text-muted-variant">
+                  <span class="material-symbols-outlined mb-2" style="font-size: 32px;">event_busy</span>
+                  <div>No events found matching your search. Try adjusting filters or create a new event.</div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Pagination Controls -->
+  {% if events.has_other_pages %}
+    <div class="d-flex align-items-center justify-content-between pt-2">
+      <span class="small text-muted-variant font-mono-data">
+        Showing {{ events.start_index }} to {{ events.end_index }} of {{ events.paginator.count }} events
+      </span>
+      <nav aria-label="Events pagination">
+        <ul class="pagination pagination-sm mb-0">
+          {% if events.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ events.previous_page_number }}&q={{ q }}&status={{ status_filter }}&category={{ category_filter }}&view={{ view_mode }}">Previous</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+          {% endif %}
+
+          {% for num in events.paginator.page_range %}
+            <li class="page-item {% if events.number == num %}active{% endif %}">
+              <a class="page-link" href="?page={{ num }}&q={{ q }}&status={{ status_filter }}&category={{ category_filter }}&view={{ view_mode }}">{{ num }}</a>
+            </li>
+          {% endfor %}
+
+          {% if events.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ events.next_page_number }}&q={{ q }}&status={{ status_filter }}&category={{ category_filter }}&view={{ view_mode }}">Next</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

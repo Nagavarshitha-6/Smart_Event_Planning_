@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Badge: {{ reg.name }} ({{ reg.ticket_id }}) | EventCore Platform{% endblock %}
+{% block breadcrumb %}{{ reg.name }} Pass{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 900px; margin: 0 auto;">
+
+  <!-- Header & Navigation (Hidden during print) -->
+  <div class="d-flex flex-column flex-sm-row sm:items-center justify-content-between gap-3 no-print">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">badge</span>
+        <span class="text-uppercase tracking-wider">Credential Pass & Accreditation</span>
+      </div>
+      <h1 class="display-title mb-1">{{ reg.name }}</h1>
+      <p class="text-muted-variant mb-0 font-mono-data">Ticket ID: <span class="fw-bold text-dark">{{ reg.ticket_id }}</span> • Reg: {{ reg.registration_id }}</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <a href="{% url 'registrations:list' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+        <span>Registry</span>
+      </a>
+      <button onclick="window.print()" class="btn btn-outline-primary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">print</span>
+        <span>Print Badge</span>
+      </button>
+      <a href="{% url 'registrations:edit' reg.id %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+        <span>Edit</span>
+      </a>
+      {% if reg.status != 'Cancelled' %}
+        <a href="{% url 'registrations:cancel' reg.id %}" class="btn btn-outline-danger d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">cancel</span>
+          <span>Cancel Pass</span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Status Notification Banner -->
+  {% if reg.status == 'Checked In' %}
+    <div class="alert alert-success d-flex align-items-center justify-content-between p-3 rounded-3 shadow-sm border-0 no-print" style="background-color: #ecfdf5; border-left: 4px solid #10b981 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+          <span class="material-symbols-outlined" style="font-size: 22px;">verified</span>
+        </div>
+        <div>
+          <div class="fw-bold text-success-emphasis">Attendee Cleared & Admitted</div>
+          <div class="small text-muted">
+            Checked in at <strong>{{ attendance.check_in_time|date:"h:i:s A"|default:"Recent" }}</strong>
+            {% if attendance.checked_in_by %}by operator <strong>{{ attendance.checked_in_by.get_full_name|default:attendance.checked_in_by.username }}</strong>{% endif %}
+            {% if attendance.notes %} • {{ attendance.notes }}{% endif %}
+          </div>
+        </div>
+      </div>
+      <a href="{% url 'attendance:scanner' %}?event={{ reg.event.id }}" class="btn btn-sm btn-success px-3 py-1.5 rounded-2 d-none d-md-inline-flex align-items-center gap-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">qr_code_scanner</span>
+        <span>Terminal</span>
+      </a>
+    </div>
+  {% elif reg.status == 'Registered' %}
+    <div class="alert alert-info d-flex align-items-center justify-content-between p-3 rounded-3 shadow-sm border-0 no-print" style="background-color: #eff6ff; border-left: 4px solid #2563eb !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+          <span class="material-symbols-outlined" style="font-size: 22px;">how_to_reg</span>
+        </div>
+        <div>
+          <div class="fw-bold text-primary-emphasis">Admission Pending - Ticket Active</div>
+          <div class="small text-muted">Awaiting physical gate scan or terminal validation at venue ingress points.</div>
+        </div>
+      </div>
+      <form method="post" action="{% url 'attendance:scanner' %}?event={{ reg.event.id }}" class="m-0">
+        {% csrf_token %}
+        <input type="hidden" name="ticket_id" value="{{ reg.ticket_id }}">
+        <button type="submit" class="btn btn-sm btn-primary px-3 py-1.5 rounded-2 d-inline-flex align-items-center gap-1.5 shadow-sm">
+          <span class="material-symbols-outlined" style="font-size: 16px;">check</span>
+          <span>Manual Check-In Now</span>
+        </button>
+      </form>
+    </div>
+  {% else %}
+    <div class="alert alert-danger d-flex align-items-center gap-3 p-3 rounded-3 shadow-sm border-0 no-print" style="background-color: #fff1f2; border-left: 4px solid #f43f5e !important;">
+      <span class="material-symbols-outlined text-danger" style="font-size: 28px;">block</span>
+      <div>
+        <div class="fw-bold text-danger">Registration Revoked / Cancelled</div>
+        <div class="small text-muted">This pass has been officially marked as cancelled. Gate scanners will reject this barcode.</div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Printable Credential Pass Card (Stitch Pass Design) -->
+  <div class="stitch-card p-0 overflow-hidden shadow-md print-badge-container">
+    <!-- Top Pass Header Ribbon -->
+    <div class="p-4 text-white d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #0037b0 0%, #1d4ed8 60%, #3b82f6 100%);">
+      <div class="d-flex items-center gap-3">
+        <div class="rounded-3 bg-white p-2 shadow-sm d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+          <img src="{% static 'images/logo.svg' %}" alt="EventCore" style="width: 32px; height: 32px;" onerror="this.src='https://placehold.co/32x32/0037b0/ffffff?text=EC';">
+        </div>
+        <div>
+          <div class="text-uppercase tracking-wider font-mono-data small opacity-75">EventCore Official Pass</div>
+          <div class="h5 fw-bold mb-0 text-white tracking-tight">{{ reg.event.name }}</div>
+        </div>
+      </div>
+      <div class="text-end">
+        <span class="badge px-3 py-1.5 rounded-pill font-mono-data fw-bold shadow-sm" style="background-color: rgba(255,255,255,0.2); font-size: 13px;">
+          {{ reg.event.category|default:"Conference" }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Pass Body -->
+    <div class="p-4 p-md-5 bg-white">
+      <div class="row g-4 align-items-center">
+        <!-- Left: Attendee Profile -->
+        <div class="col-md-7 border-end-md">
+          <div class="d-flex align-items-start gap-4">
+            <div class="rounded-circle text-white fw-bold d-flex align-items-center justify-content-center shadow" style="width: 80px; height: 80px; font-size: 28px; background: linear-gradient(135deg, #2563eb, #1e40af); shrink-0;">
+              {{ reg.name|slice:":2"|upper }}
+            </div>
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                <h2 class="h3 fw-bold mb-0 text-dark">{{ reg.name }}</h2>
+                {% if reg.status == 'Checked In' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill small fw-semibold">
+                    ✓ Checked In
+                  </span>
+                {% elif reg.status == 'Registered' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill small fw-semibold">
+                    Valid Pass
+                  </span>
+                {% else %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 rounded-pill small fw-semibold">
+                    Cancelled
+                  </span>
+                {% endif %}
+              </div>
+              <div class="text-muted small mb-2">{{ reg.email }}</div>
+              {% if reg.phone %}
+                <div class="font-mono-data text-muted small mb-3">{{ reg.phone }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Session Metadata Grid -->
+          <div class="row g-3 mt-3 pt-3 border-top">
+            <div class="col-6">
+              <span class="small text-muted text-uppercase tracking-wider d-block font-mono-data" style="font-size: 11px;">Date & Timeline</span>
+              <span class="fw-semibold text-dark">{{ reg.event.date|date:"F d, Y" }}</span>
+              <span class="small text-muted d-block">{{ reg.event.start_time|time:"g:i A" }} - {{ reg.event.end_time|time:"g:i A" }}</span>
+            </div>
+            <div class="col-6">
+              <span class="small text-muted text-uppercase tracking-wider d-block font-mono-data" style="font-size: 11px;">Assigned Venue</span>
+              <span class="fw-semibold text-dark">{{ reg.event.venue }}</span>
+              <span class="small text-muted d-block">Campus Operations Hub</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Optical Barcode & QR Stamp -->
+        <div class="col-md-5 text-center">
+          <div class="p-3 bg-light rounded-3 border d-inline-block shadow-sm">
+            <!-- Simulated QR Visual Box with corner locators -->
+            <div class="position-relative bg-white p-3 rounded-2 border mx-auto" style="width: 160px; height: 160px; display: grid; place-items: center;">
+              <!-- Outer QR aesthetic simulation -->
+              <svg viewBox="0 0 100 100" style="width: 100%; height: 100%;">
+                <!-- Corner 1 -->
+                <rect x="5" y="5" width="26" height="26" fill="#0037b0" rx="3" />
+                <rect x="9" y="9" width="18" height="18" fill="#ffffff" rx="2" />
+                <rect x="13" y="13" width="10" height="10" fill="#0037b0" rx="1" />
+
+                <!-- Corner 2 -->
+                <rect x="69" y="5" width="26" height="26" fill="#0037b0" rx="3" />
+                <rect x="73" y="9" width="18" height="18" fill="#ffffff" rx="2" />
+                <rect x="77" y="13" width="10" height="10" fill="#0037b0" rx="1" />
+
+                <!-- Corner 3 -->
+                <rect x="5" y="69" width="26" height="26" fill="#0037b0" rx="3" />
+                <rect x="9" y="73" width="18" height="18" fill="#ffffff" rx="2" />
+                <rect x="13" y="77" width="10" height="10" fill="#0037b0" rx="1" />
+
+                <!-- Data Matrix Dots Pattern -->
+                <rect x="42" y="10" width="6" height="6" fill="#1e293b" />
+                <rect x="52" y="10" width="6" height="6" fill="#1e293b" />
+                <rect x="42" y="24" width="6" height="6" fill="#1e293b" />
+                <rect x="10" y="42" width="6" height="6" fill="#1e293b" />
+                <rect x="24" y="42" width="6" height="6" fill="#1e293b" />
+                <rect x="38" y="38" width="8" height="8" fill="#0037b0" />
+                <rect x="50" y="42" width="6" height="6" fill="#1e293b" />
+                <rect x="60" y="38" width="6" height="6" fill="#1e293b" />
+                <rect x="74" y="42" width="6" height="6" fill="#1e293b" />
+                <rect x="88" y="42" width="6" height="6" fill="#1e293b" />
+                <rect x="42" y="56" width="6" height="6" fill="#1e293b" />
+                <rect x="56" y="56" width="6" height="6" fill="#1e293b" />
+                <rect x="70" y="56" width="6" height="6" fill="#1e293b" />
+                <rect x="42" y="70" width="6" height="6" fill="#1e293b" />
+                <rect x="56" y="70" width="6" height="6" fill="#1e293b" />
+                <rect x="70" y="74" width="6" height="6" fill="#1e293b" />
+                <rect x="84" y="70" width="6" height="6" fill="#1e293b" />
+                <rect x="42" y="84" width="6" height="6" fill="#1e293b" />
+                <rect x="60" y="84" width="6" height="6" fill="#1e293b" />
+                <rect x="78" y="84" width="6" height="6" fill="#1e293b" />
+              </svg>
+            </div>
+            <div class="mt-2">
+              <span class="font-mono-data fw-bold text-dark fs-5 tracking-wider d-block">{{ reg.ticket_id }}</span>
+              <span class="font-mono-data small text-muted" style="font-size: 11px;">SCAN AT ANY GATE TERMINAL</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pass Bottom Security Footer -->
+    <div class="px-4 py-3 bg-light border-top d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 font-mono-data small text-muted">
+      <div>
+        <span>SECURITY HASH: </span>
+        <span class="fw-semibold text-dark">{{ reg.registration_id }}-{{ reg.ticket_id }}</span>
+      </div>
+      <div>
+        <span>ISSUED: </span>
+        <span>{{ reg.registration_date|date:"Y-m-d H:i" }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historical Telemetry & Log Details -->
+  <div class="stitch-card p-4 no-print">
+    <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+      <span class="material-symbols-outlined" style="font-size: 18px;">history_edu</span>
+      <span>Admission Telemetry & Registry Record</span>
+    </h2>
+    <div class="row g-3">
+      <div class="col-sm-6 col-md-3">
+        <span class="small text-muted d-block">System Record ID</span>
+        <span class="font-mono-data fw-semibold text-dark">#{{ reg.id }}</span>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <span class="small text-muted d-block">Registration Code</span>
+        <span class="font-mono-data fw-semibold text-dark">{{ reg.registration_id }}</span>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <span class="small text-muted d-block">Current Gate Status</span>
+        <span class="fw-semibold {% if reg.status == 'Checked In' %}text-success{% elif reg.status == 'Registered' %}text-primary{% else %}text-danger{% endif %}">
+          {{ reg.status }}
+        </span>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <span class="small text-muted d-block">Initial Dispatch Time</span>
+        <span class="small text-dark">{{ reg.registration_date|date:"M d, Y h:i A" }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+  .sidebar, header, .no-print, .btn, .alert {
+    display: none !important;
+  }
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-badge-container {
+    box-shadow: none !important;
+    border: 2px dashed #94a3b8 !important;
+    max-width: 650px !important;
+    margin: 40px auto !important;
+  }
+}
+</style>
+{% endblock %}

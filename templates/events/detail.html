@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ event.name }} | EventCore Platform{% endblock %}
+{% block breadcrumb %}<a href="{% url 'events:list' %}" class="text-decoration-none text-muted-variant">Events</a> <span class="material-symbols-outlined" style="font-size: 15px;">chevron_right</span> {{ event.name|truncatechars:20 }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4">
+  <!-- Top Event Master Header -->
+  <div class="d-flex flex-column flex-lg-row lg:items-center justify-content-between gap-3 pb-3 border-bottom">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <span class="badge bg-light text-primary font-mono-data border px-2 py-1">{{ event.event_id }}</span>
+        <span class="badge bg-secondary-subtle text-secondary rounded-pill">{{ event.category }}</span>
+        <span class="status-pill {% if event.status == 'Upcoming' or event.status == 'Confirmed' %}status-confirmed{% elif event.status == 'Draft' %}status-warning{% elif event.status == 'Cancelled' %}status-conflict{% else %}status-info{% endif %}">
+          <span class="dot"></span> {{ event.status }}
+        </span>
+      </div>
+      <h1 class="display-title mb-1 text-on-surface">{{ event.name }}</h1>
+      <p class="text-muted-variant mb-0 d-flex align-items-center gap-3 flex-wrap">
+        <span class="d-inline-flex align-items-center gap-1">
+          <span class="material-symbols-outlined text-primary" style="font-size: 16px;">calendar_today</span>
+          <span>{{ event.date|date:"l, F d, Y" }}</span>
+        </span>
+        <span>•</span>
+        <span class="d-inline-flex align-items-center gap-1 font-mono-data">
+          <span class="material-symbols-outlined text-primary" style="font-size: 16px;">schedule</span>
+          <span>{{ event.start_time|time:"H:i" }} – {{ event.end_time|time:"H:i" }}</span>
+        </span>
+        <span>•</span>
+        <span class="d-inline-flex align-items-center gap-1">
+          <span class="material-symbols-outlined text-primary" style="font-size: 16px;">domain</span>
+          <span>{{ event.venue }}</span>
+        </span>
+      </p>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="{% url 'events:edit' event.id %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+        <span>Edit Event</span>
+      </a>
+      <a href="{% url 'events:delete' event.id %}" class="btn btn-outline-danger d-inline-flex align-items-center gap-1 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+        <span>Delete</span>
+      </a>
+      <a href="{% url 'attendance:scanner' %}" class="btn btn-primary-stitch d-inline-flex align-items-center gap-1 px-3 py-2 rounded-2 shadow-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">qr_code_scanner</span>
+        <span>Check-In Scanner</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Critical Conflict Warning (if active) -->
+  {% if conflicts %}
+    {% for conflict in conflicts %}
+      <div class="conflict-alert-card mb-2">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-danger text-white font-mono-data text-uppercase" style="font-size: 10px;">Resource Clashing</span>
+            <span class="fw-bold text-danger">{{ conflict.resource.name }}</span>
+          </div>
+          <span class="font-mono-data text-muted-variant small">{{ conflict.conflict_date }}</span>
+        </div>
+        <p class="small text-on-surface mb-2">{{ conflict.description }}</p>
+        <div class="d-flex gap-2">
+          <a href="{% url 'resources:conflicts' %}" class="btn btn-sm btn-primary-stitch py-1 px-3 rounded-2">Resolve Collision</a>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Top Metrics Overview Strip -->
+  <div class="row g-3">
+    <!-- Capacity & RSVPs -->
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3">
+        <span class="kpi-title">RSVP Capacity</span>
+        <div class="d-flex justify-content-between align-items-baseline mt-1">
+          <span class="fs-4 fw-bold font-mono-data">{{ event.registered_count }}</span>
+          <span class="small text-muted-variant font-mono-data">/ {{ event.capacity }} max</span>
+        </div>
+        <div class="progress mt-2" style="height: 5px;">
+          <div class="progress-bar {% if event.capacity_percentage >= 90 %}bg-danger{% else %}bg-primary{% endif %}" style="width: {{ event.capacity_percentage }}%;"></div>
+        </div>
+        <span class="small text-muted-variant mt-1 d-block">{{ event.capacity_percentage }}% space allocated</span>
+      </div>
+    </div>
+
+    <!-- Checked-In Count -->
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3">
+        <span class="kpi-title">Turnout / Check-Ins</span>
+        <div class="d-flex justify-content-between align-items-baseline mt-1">
+          <span class="fs-4 fw-bold font-mono-data text-success">{{ checked_in_count }}</span>
+          <span class="small text-muted-variant font-mono-data">of {{ event.registered_count }}</span>
+        </div>
+        <div class="progress mt-2" style="height: 5px;">
+          <div class="progress-bar bg-success" style="width: {% if event.registered_count > 0 %}{% widthratio checked_in_count event.registered_count 100 %}{% else %}0{% endif %}%;"></div>
+        </div>
+        <span class="small text-success mt-1 d-block font-mono-data">Verified badges</span>
+      </div>
+    </div>
+
+    <!-- Budget Allocation -->
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3">
+        <span class="kpi-title">Budget Allocation</span>
+        <div class="fs-4 fw-bold font-mono-data text-primary mt-1">${{ budget.allocated_amount|default:"0.00" }}</div>
+        <span class="small text-muted-variant font-mono-data d-block mt-2">
+          Spent: <strong>${{ total_spent|floatformat:2 }}</strong>
+        </span>
+      </div>
+    </div>
+
+    <!-- Pinned Resources -->
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3">
+        <span class="kpi-title">Assigned Hardware</span>
+        <div class="fs-4 fw-bold font-mono-data text-secondary mt-1">{{ allocations.count }} Items</div>
+        <span class="small text-muted-variant d-block mt-2 font-mono-data">
+          {{ event_vendors.count }} Vendor Contracts
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Pill Tabs -->
+  <ul class="nav nav-pills gap-2 border-bottom pb-3" id="eventTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active rounded-pill px-3 py-1.5 small fw-semibold" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">1. Overview</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-3 py-1.5 small fw-semibold" id="attendees-tab" data-bs-toggle="pill" data-bs-target="#attendees" type="button" role="tab">2. Attendees ({{ registrations.count }})</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-3 py-1.5 small fw-semibold" id="vendors-tab" data-bs-toggle="pill" data-bs-target="#vendors" type="button" role="tab">3. Vendors ({{ event_vendors.count }})</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-3 py-1.5 small fw-semibold" id="resources-tab" data-bs-toggle="pill" data-bs-target="#resources" type="button" role="tab">4. Resources ({{ allocations.count }})</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-3 py-1.5 small fw-semibold" id="schedule-tab" data-bs-toggle="pill" data-bs-target="#schedule" type="button" role="tab">5. Schedule</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-3 py-1.5 small fw-semibold" id="budget-tab" data-bs-toggle="pill" data-bs-target="#budget" type="button" role="tab">6. Budget &amp; Expenses</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link rounded-pill px-3 py-1.5 small fw-semibold" id="activity-tab" data-bs-toggle="pill" data-bs-target="#activity" type="button" role="tab">7. Activity</button>
+    </li>
+  </ul>
+
+  <!-- Tab Content Panes -->
+  <div class="tab-content" id="eventTabContent">
+    <!-- SECTION 1: OVERVIEW -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="stitch-card p-4 mb-4">
+            <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary">Event Description &amp; Scope</h2>
+            <p class="text-on-surface leading-relaxed mb-0">
+              {{ event.description|default:"No extended description provided for this campus event."|linebreaks }}
+            </p>
+          </div>
+
+          <div class="stitch-card p-4">
+            <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary">Venue &amp; Accessibility Specs</h2>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <span class="text-muted-variant small d-block">Designated Space:</span>
+                <span class="fw-semibold text-on-surface">{{ event.venue }}</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted-variant small d-block">Authorized Capacity:</span>
+                <span class="fw-semibold text-on-surface font-mono-data">{{ event.capacity }} Maximum Attendees</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted-variant small d-block">Logistical Window:</span>
+                <span class="fw-semibold text-on-surface font-mono-data">{{ event.start_time|time:"H:i" }} – {{ event.end_time|time:"H:i" }}</span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted-variant small d-block">Event Category:</span>
+                <span class="fw-semibold text-on-surface">{{ event.category }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="stitch-card p-4">
+            <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary">Metadata &amp; Governance</h2>
+            <div class="d-flex flex-column gap-3 small">
+              <div>
+                <span class="text-muted-variant d-block">Created By:</span>
+                <span class="fw-semibold">{{ event.created_by.get_full_name|default:event.created_by.username|default:"Operations Staff" }}</span>
+              </div>
+              <div>
+                <span class="text-muted-variant d-block">Creation Timestamp:</span>
+                <span class="font-mono-data">{{ event.created_date|date:"M d, Y H:i" }}</span>
+              </div>
+              <div>
+                <span class="text-muted-variant d-block">Institutional ID:</span>
+                <span class="font-mono-data text-primary fw-bold">{{ event.event_id }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: ATTENDEES -->
+    <div class="tab-pane fade" id="attendees" role="tabpanel">
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <h2 class="h6 fw-bold mb-0">Registered Attendees &amp; Ticket Passes</h2>
+            <span class="small text-muted-variant">Verified registrations with unique barcode credentials</span>
+          </div>
+          <span class="badge bg-primary-subtle text-primary font-mono-data px-3 py-1.5 rounded-pill">
+            {{ registrations.count }} Confirmed Passes
+          </span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="stitch-table">
+            <thead>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Attendee Name</th>
+                <th>Email Address</th>
+                <th>Registration Date</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for reg in registrations %}
+                <tr>
+                  <td>
+                    <span class="badge bg-light text-primary font-mono-data border">{{ reg.ticket_id }}</span>
+                  </td>
+                  <td class="fw-semibold">{{ reg.name }}</td>
+                  <td class="text-muted-variant">{{ reg.email }}</td>
+                  <td class="font-mono-data small">{{ reg.registration_date|date:"M d, Y" }}</td>
+                  <td>
+                    <span class="status-pill {% if reg.status == 'Checked In' %}status-confirmed{% elif reg.status == 'Registered' %}status-info{% else %}status-conflict{% endif %}">
+                      <span class="dot"></span> {{ reg.status }}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'attendance:scanner' %}" class="btn btn-sm btn-light border py-1 px-2 rounded-2">Verify</a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted-variant">No attendee registrations recorded for this event yet.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: VENDORS -->
+    <div class="tab-pane fade" id="vendors" role="tabpanel">
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <h2 class="h6 fw-bold mb-0">Contracted Event Vendors &amp; Partners</h2>
+            <span class="small text-muted-variant">Service providers assigned to catering, rigging, and staging</span>
+          </div>
+          <a href="{% url 'vendors:list' %}" class="btn btn-sm btn-primary-stitch px-3 py-1.5 rounded-2">Vendor Directory</a>
+        </div>
+
+        <div class="table-responsive">
+          <table class="stitch-table">
+            <thead>
+              <tr>
+                <th>Vendor ID</th>
+                <th>Company Name</th>
+                <th>Service Discipline</th>
+                <th>Contact Representative</th>
+                <th>Phone / Email</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for vnd in event_vendors %}
+                <tr>
+                  <td><span class="font-mono-data text-primary">{{ vnd.vendor_id }}</span></td>
+                  <td class="fw-semibold">{{ vnd.name }}</td>
+                  <td><span class="badge bg-secondary-subtle text-secondary rounded-pill font-mono-data">{{ vnd.service_type }}</span></td>
+                  <td>{{ vnd.contact_person }}</td>
+                  <td class="font-mono-data small">{{ vnd.phone }} · {{ vnd.email }}</td>
+                  <td><span class="status-pill status-confirmed"><span class="dot"></span> {{ vnd.status }}</span></td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted-variant">No external vendors have been contracted for this event.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: RESOURCES -->
+    <div class="tab-pane fade" id="resources" role="tabpanel">
+      <div class="stitch-card p-4">
+        <div class="card-header-clean">
+          <div>
+            <h2 class="h6 fw-bold mb-0">Assigned Campus Resources &amp; Hardware</h2>
+            <span class="small text-muted-variant">Auditorium space, AV equipment, and furniture pinned to this schedule</span>
+          </div>
+          <a href="{% url 'resources:allocations' %}" class="btn btn-sm btn-primary-stitch px-3 py-1.5 rounded-2">Allocate Resource</a>
+        </div>
+
+        <div class="table-responsive">
+          <table class="stitch-table">
+            <thead>
+              <tr>
+                <th>Resource Name</th>
+                <th>Type</th>
+                <th>Quantity</th>
+                <th>Allocated Slot</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for alloc in allocations %}
+                <tr>
+                  <td class="fw-semibold">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="material-symbols-outlined text-primary" style="font-size: 18px;">inventory_2</span>
+                      <span>{{ alloc.resource.name }}</span>
+                    </div>
+                  </td>
+                  <td><span class="badge bg-light text-dark border">{{ alloc.resource.resource_type }}</span></td>
+                  <td class="font-mono-data">{{ alloc.quantity }} Unit(s)</td>
+                  <td class="font-mono-data small">{{ alloc.date }} ({{ alloc.start_time|time:"H:i" }} – {{ alloc.end_time|time:"H:i" }})</td>
+                  <td>
+                    <span class="status-pill {% if alloc.status == 'Confirmed' %}status-confirmed{% elif alloc.status == 'Conflicted' %}status-conflict{% else %}status-warning{% endif %}">
+                      <span class="dot"></span> {{ alloc.status }}
+                    </span>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center py-4 text-muted-variant">No physical assets currently allocated to this event.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: SCHEDULE -->
+    <div class="tab-pane fade" id="schedule" role="tabpanel">
+      <div class="stitch-card p-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary">Master Operational Schedule</h2>
+        <div class="d-flex flex-column gap-3">
+          <div class="d-flex align-items-start gap-3 p-3 rounded-2 bg-light">
+            <span class="badge bg-primary text-white font-mono-data px-2 py-1">T-60m</span>
+            <div>
+              <div class="fw-semibold">Load-In &amp; Staging Calibration</div>
+              <div class="small text-muted-variant">A/V checks, projector focus, wireless mic arrays testing.</div>
+            </div>
+          </div>
+          <div class="d-flex align-items-start gap-3 p-3 rounded-2 bg-light">
+            <span class="badge bg-primary text-white font-mono-data px-2 py-1">{{ event.start_time|time:"H:i" }}</span>
+            <div>
+              <div class="fw-semibold">Doors Open &amp; Badge Scanning</div>
+              <div class="small text-muted-variant">Attendees enter through Gate 4 Scanner desks.</div>
+            </div>
+          </div>
+          <div class="d-flex align-items-start gap-3 p-3 rounded-2 bg-light">
+            <span class="badge bg-primary text-white font-mono-data px-2 py-1">{{ event.end_time|time:"H:i" }}</span>
+            <div>
+              <div class="fw-semibold">Official Session Adjournment &amp; Teardown</div>
+              <div class="small text-muted-variant">Facilities sweep, resource release, and inventory returns.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 6: BUDGET & EXPENSES -->
+    <div class="tab-pane fade" id="budget" role="tabpanel">
+      <div class="stitch-card p-4 mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary">Event Budget Breakdown</h2>
+        <div class="row g-3 mb-3">
+          <div class="col-sm-4">
+            <span class="text-muted-variant small d-block">Allocated Budget:</span>
+            <span class="fs-5 fw-bold font-mono-data text-primary">${{ budget.allocated_amount|default:"0.00" }}</span>
+          </div>
+          <div class="col-sm-4">
+            <span class="text-muted-variant small d-block">Committed Expenses:</span>
+            <span class="fs-5 fw-bold font-mono-data text-danger">${{ total_spent|floatformat:2 }}</span>
+          </div>
+          <div class="col-sm-4">
+            <span class="text-muted-variant small d-block">Remaining Balance:</span>
+            <span class="fs-5 fw-bold font-mono-data text-success">${{ budget.remaining_amount|default:"0.00" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stitch-card p-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary">Line-Item Expenses Ledger</h2>
+        <div class="table-responsive">
+          <table class="stitch-table">
+            <thead>
+              <tr>
+                <th>Expense ID</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Vendor</th>
+                <th>Amount</th>
+                <th>Payment Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for exp in expenses %}
+                <tr>
+                  <td><span class="font-mono-data text-primary">{{ exp.expense_id }}</span></td>
+                  <td><span class="badge bg-secondary-subtle text-secondary font-mono-data">{{ exp.category }}</span></td>
+                  <td>{{ exp.description }}</td>
+                  <td>{{ exp.vendor.name|default:"Direct / Campus" }}</td>
+                  <td class="font-mono-data fw-bold">${{ exp.amount|floatformat:2 }}</td>
+                  <td><span class="status-pill status-confirmed"><span class="dot"></span> {{ exp.payment_status }}</span></td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted-variant">No expense vouchers registered for this event.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 7: ACTIVITY -->
+    <div class="tab-pane fade" id="activity" role="tabpanel">
+      <div class="stitch-card p-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary">Recent Event Activity</h2>
+        <div class="d-flex flex-column gap-3">
+          {% for chk in recent_checkins %}
+            <div class="d-flex align-items-start gap-3">
+              <span class="material-symbols-outlined text-success p-1 bg-success-subtle rounded-circle" style="font-size: 18px;">how_to_reg</span>
+              <div>
+                <div class="small text-on-surface"><strong>{{ chk.registration.name }}</strong> checked in with ticket <span class="font-mono-data">{{ chk.ticket_id }}</span></div>
+                <div class="small text-muted-variant font-mono-data">{{ chk.check_in_time|timesince }} ago</div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="text-center py-4 text-muted-variant small">No live check-in events recorded yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

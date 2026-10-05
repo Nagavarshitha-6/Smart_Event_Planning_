@@ -1,0 +1,641 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Attendance & Real-Time Check-In | EventCore Platform{% endblock %}
+{% block breadcrumb %}Attendance & Check-in{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 1720px; margin: 0 auto; width: 100%;">
+
+  <!-- Top Action & Context Row -->
+  <div class="d-flex flex-column flex-xl-row xl:align-items-center justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <span class="badge rounded-pill text-uppercase tracking-wider px-2.5 py-1" style="background-color: var(--secondary-container); color: var(--on-secondary-fixed-variant); font-size: 11px;">
+          <span class="spinner-grow spinner-grow-sm me-1" role="status" style="width: 8px; height: 8px; color: var(--primary);"></span>
+          Real-Time Gate Telemetry
+        </span>
+        <span class="font-mono-data small text-muted-variant">Cluster: US-EAST-SYS4</span>
+      </div>
+      <h1 class="display-title mb-1">Attendance & Real-Time Check-In</h1>
+      <p class="text-muted-variant mb-0">Live gate validation, QR/Ticket barcode scanner, and gate throughput telemetry across central campus zones.</p>
+    </div>
+
+    <!-- Active Event Selector & Fast Switch -->
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <!-- Target Event Switcher Dropdown -->
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle bg-white px-3 py-2 rounded-3 text-start shadow-sm d-flex align-items-center gap-2 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+          <span class="material-symbols-outlined text-primary" style="font-size: 20px;">event_seat</span>
+          <div>
+            <div class="small text-muted-variant text-uppercase tracking-wider" style="font-size: 10px;">Target Event Session</div>
+            <div class="fw-bold text-dark text-truncate" style="max-width: 280px;">
+              {{ selected_event.name|default:"All Campus Events" }}
+            </div>
+          </div>
+        </button>
+        <ul class="dropdown-menu shadow-lg border-0 rounded-3 p-2" style="min-width: 320px;">
+          <li class="dropdown-header text-uppercase tracking-wider font-mono-data small">Select Event Session</li>
+          {% for ev in events_list %}
+            <li>
+              <a class="dropdown-item rounded-2 py-2 d-flex justify-content-between align-items-center {% if selected_event.id == ev.id %}active{% endif %}" href="?event={{ ev.id }}">
+                <div class="text-truncate me-2">
+                  <div class="fw-semibold">{{ ev.name }}</div>
+                  <div class="small opacity-75">{{ ev.venue }} • {{ ev.date|date:"M d" }}</div>
+                </div>
+                <span class="badge bg-secondary-subtle text-dark font-mono-data">{{ ev.registered_count }}/{{ ev.capacity }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <a href="{% url 'attendance:scanner' %}{% if selected_event %}?event={{ selected_event.id }}{% endif %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 bg-white border-0 shadow-sm" title="Reload live telemetry">
+        <span class="material-symbols-outlined" style="font-size: 18px;">sync</span>
+        <span>Fast Sync</span>
+      </a>
+      <a href="{% url 'registrations:list' %}{% if selected_event %}?event={{ selected_event.id }}{% endif %}" class="btn btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 shadow-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">print</span>
+        <span>Badge Hub</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Quick Metrics Deck (4 KPI Cards matching Stitch) -->
+  <div class="row g-3">
+    <!-- Total Registered -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Total Registered</span>
+            <div class="h2 fw-bold text-dark tracking-tight mt-1 mb-0">{{ total_registered }}</div>
+          </div>
+          <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background-color: var(--secondary-container); color: var(--primary); width: 42px; height: 42px;">
+            <span class="material-symbols-outlined" style="font-size: 22px;">badge</span>
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top small">
+          <span class="text-muted-variant">Capacity: {{ capacity }} Seated</span>
+          <span class="font-mono-data fw-semibold text-primary">
+            {% if capacity > 0 %}{% widthratio total_registered capacity 100 %}% Booked{% else %}100%{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checked In Today -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Checked In Today</span>
+            <div class="d-flex align-items-baseline gap-2 mt-1">
+              <span class="h2 fw-bold text-dark tracking-tight mb-0">{{ checked_in_count }}</span>
+              <span class="badge bg-success-subtle text-success font-mono-data fw-semibold px-2 py-0.5 rounded-pill">{{ check_in_pct }}%</span>
+            </div>
+          </div>
+          <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background-color: #ecfdf5; color: #10b981; width: 42px; height: 42px;">
+            <span class="material-symbols-outlined" style="font-size: 22px;">check_circle</span>
+          </div>
+        </div>
+        <div class="w-100 mt-3 pt-2 border-top">
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ check_in_pct }}%;" aria-valuenow="{{ check_in_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remaining / In-Transit -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Remaining / In-Transit</span>
+            <div class="h2 fw-bold text-dark tracking-tight mt-1 mb-0">{{ remaining_count }}</div>
+          </div>
+          <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background-color: #fffbeb; color: #b45309; width: 42px; height: 42px;">
+            <span class="material-symbols-outlined" style="font-size: 22px;">pending_actions</span>
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top small">
+          <span class="text-muted-variant">Expected Ingress</span>
+          <span class="font-mono-data fw-semibold text-warning-emphasis">{{ remaining_pct }}% Left</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Peak Gate Flow -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Peak Gate Flow</span>
+            <div class="d-flex align-items-baseline gap-1 mt-1">
+              <span class="h2 fw-bold text-dark tracking-tight mb-0">{{ peak_flow }}</span>
+              <span class="small text-muted-variant font-medium">scans/min</span>
+            </div>
+          </div>
+          <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background-color: var(--surface-container-high); color: var(--primary); width: 42px; height: 42px;">
+            <span class="material-symbols-outlined" style="font-size: 22px;">speed</span>
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top small">
+          <span class="text-muted-variant">Network Transit Avg</span>
+          <span class="font-mono-data fw-semibold text-success">23ms Latency</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scanner Terminal & Telemetry Columns -->
+  <div class="row g-4">
+    <!-- Left Column: Hardware Scanner Deck -->
+    <div class="col-xl-7">
+      <div class="d-flex flex-column gap-3">
+        <!-- Interactive Barcode / Optical Terminal Card -->
+        <div class="stitch-card p-4 position-relative overflow-hidden" style="background: linear-gradient(145deg, #ffffff 0%, #f8faff 100%);">
+          <!-- Terminal Header & Toggles -->
+          <div class="d-flex flex-column flex-sm-row sm:align-items-center justify-content-between pb-3 gap-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+              <div class="rounded-3 p-2 bg-primary text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
+                <span class="material-symbols-outlined" style="font-size: 22px;">qr_code_scanner</span>
+              </div>
+              <div>
+                <h2 class="h5 fw-bold mb-0 text-dark">Hardware Scanner Terminal</h2>
+                <div class="small text-muted font-mono-data" style="font-size: 11px;">
+                  Station: <span id="currentStationLabel" class="fw-semibold text-dark">Gate 4 (VIP North)</span> • Continuous Auto-Read
+                </div>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="d-flex align-items-center gap-3">
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="autoCheckinSwitch" checked>
+                <label class="form-check-label small fw-medium text-muted" for="autoCheckinSwitch">Auto-Read</label>
+              </div>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="audioChimeSwitch" checked>
+                <label class="form-check-label small fw-medium text-muted" for="audioChimeSwitch">Audio Chime</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Big Input Bar Form -->
+          <form id="scannerForm" method="post" action="{% url 'attendance:scanner' %}{% if selected_event %}?event={{ selected_event.id }}{% endif %}" class="mt-3">
+            {% csrf_token %}
+            <input type="hidden" name="station" id="stationField" value="Gate 4 (VIP North)">
+            <input type="hidden" name="auto_checkin" id="autoCheckinHidden" value="on">
+
+            <div class="d-flex flex-column flex-sm-row align-items-stretch gap-2">
+              <div class="position-relative flex-grow-1">
+                <span class="material-symbols-outlined position-absolute text-primary" style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 26px;">
+                  barcode_scanner
+                </span>
+                <input
+                  type="text"
+                  name="ticket_id"
+                  id="ticketInput"
+                  class="form-control form-control-lg font-mono-data fw-bold shadow-inner"
+                  style="padding-left: 50px; padding-right: 90px; height: 56px; font-size: 17px; letter-spacing: 0.05em; text-transform: uppercase; background-color: var(--surface-container-low); border-radius: 10px;"
+                  placeholder="Scan barcode, enter TKT-XXXX, or attendee name..."
+                  autofocus
+                  autocomplete="off"
+                >
+                <span class="position-absolute end-0 top-50 translate-middle-y me-3 badge bg-white text-muted border font-mono-data py-1 px-2" style="font-size: 11px;">
+                  ↵ RETURN
+                </span>
+              </div>
+              <button type="submit" id="verifyBtn" class="btn btn-primary px-4 fw-bold d-inline-flex align-items-center justify-content-center gap-2 shadow-sm rounded-3" style="height: 56px; min-width: 190px;">
+                <span class="material-symbols-outlined" style="font-size: 22px;">verified</span>
+                <span>VERIFY & CHECK IN</span>
+              </button>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2 text-muted-variant small">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--tertiary);">info</span>
+              <span>Compatible with 2D Zebra scanners, Honeywell Bluetooth, and optical camera barcode readers.</span>
+            </div>
+          </form>
+
+          <!-- Dynamic Live Scan Result Container -->
+          <div id="scanResultContainer" class="mt-4">
+            {% if scan_result %}
+              {% if scan_result.status == 'success' %}
+                <!-- Green Success Card (Matching Stitch Screen) -->
+                <div class="rounded-3 p-4 shadow-sm border-0" style="background-color: #ecfdf5; border-left: 5px solid #10b981 !important;">
+                  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-3">
+                    <div class="d-flex align-items-start gap-3">
+                      <div class="rounded-3 bg-success text-white d-flex align-items-center justify-content-center shadow-sm shrink-0" style="width: 48px; height: 48px;">
+                        <span class="material-symbols-outlined" style="font-size: 28px;">check</span>
+                      </div>
+                      <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                          <span class="small fw-bold text-success text-uppercase tracking-wider">✓ Attendee Checked In Successfully</span>
+                          <span class="badge bg-success-subtle text-success border border-success-subtle font-mono-data fw-bold">{{ scan_result.reg.ticket_id }}</span>
+                          <span class="badge bg-primary text-white font-mono-data fw-semibold">VIP / ACCREDITED</span>
+                        </div>
+                        <h3 class="h4 fw-bold text-dark mb-1">{{ scan_result.reg.name }}</h3>
+                        <p class="text-secondary small mb-0">{{ scan_result.reg.email }} • Event: {{ scan_result.reg.event.name }}</p>
+                      </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <a href="{% url 'registrations:detail' scan_result.reg.id %}" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1 px-3 py-2 rounded-2 shadow-sm">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">print</span>
+                        <span>Print Badge</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Attributes Grid -->
+                  <div class="row g-3 mt-3 pt-3 border-top small" style="border-color: #d1fae5 !important;">
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted d-block font-mono-data text-uppercase" style="font-size: 11px;">Zone & Seating</span>
+                      <span class="fw-bold text-dark">General Row A-12</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted d-block font-mono-data text-uppercase" style="font-size: 11px;">Station & Timestamp</span>
+                      <span class="font-mono-data fw-semibold text-dark">{{ scan_result.attendance.check_in_time|date:"h:i:s A" }}</span>
+                      <span class="text-success small d-block">Verified just now</span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted d-block font-mono-data text-uppercase" style="font-size: 11px;">Logistics Asset</span>
+                      <span class="fw-bold text-dark d-flex align-items-center gap-1">
+                        <span class="material-symbols-outlined text-primary" style="font-size: 15px;">badge</span>
+                        <span>Pass #{{ scan_result.reg.id }}</span>
+                      </span>
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <span class="text-muted d-block font-mono-data text-uppercase" style="font-size: 11px;">Station Record</span>
+                      <span class="text-dark">{{ scan_result.attendance.notes|default:"Gate 4 VIP North" }}</span>
+                    </div>
+                  </div>
+                </div>
+
+              {% elif scan_result.status == 'warning' %}
+                <!-- Amber Duplicate Warning Card (Matching Stitch Screen) -->
+                <div class="rounded-3 p-4 shadow-sm border-0" style="background-color: #fffbeb; border-left: 5px solid #f59e0b !important;">
+                  <div class="d-flex align-items-start gap-3">
+                    <div class="rounded-3 bg-warning text-dark d-flex align-items-center justify-content-center shadow-sm shrink-0" style="width: 44px; height: 44px;">
+                      <span class="material-symbols-outlined" style="font-size: 26px;">warning</span>
+                    </div>
+                    <div class="flex-grow-1">
+                      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <span class="small fw-bold text-warning-emphasis text-uppercase tracking-wider">Duplicate Check-In Detected</span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis font-mono-data fw-bold">{{ scan_result.reg.ticket_id }}</span>
+                      </div>
+                      <h4 class="h5 fw-bold text-dark mb-1">{{ scan_result.reg.name }}</h4>
+                      <p class="text-secondary small mb-2">
+                        Already cleared at <strong class="text-dark">{{ scan_result.attendance.check_in_time|date:"h:i A"|default:"earlier today" }}</strong>
+                        via <strong class="text-dark">{{ scan_result.attendance.notes|default:"Gate 1 (South Quad)" }}</strong>
+                        {% if scan_result.attendance.checked_in_by %}by Operator {{ scan_result.attendance.checked_in_by.username }}{% endif %}.
+                      </p>
+                      <div class="d-flex align-items-center justify-content-between pt-2 border-top small" style="border-color: #fef3c7 !important;">
+                        <span class="font-mono-data text-muted">Flag ID: DUP-{{ scan_result.reg.id }}</span>
+                        <a href="{% url 'registrations:detail' scan_result.reg.id %}" class="btn btn-sm btn-outline-warning text-dark px-3 py-1 rounded-2">
+                          Audit Pass
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              {% else %}
+                <!-- Rose Error Card (Matching Stitch Screen) -->
+                <div class="rounded-3 p-4 shadow-sm border-0" style="background-color: #fff1f2; border-left: 5px solid #f43f5e !important;">
+                  <div class="d-flex align-items-start gap-3">
+                    <div class="rounded-3 bg-danger text-white d-flex align-items-center justify-content-center shadow-sm shrink-0" style="width: 44px; height: 44px;">
+                      <span class="material-symbols-outlined" style="font-size: 26px;">cancel</span>
+                    </div>
+                    <div class="flex-grow-1">
+                      <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="small fw-bold text-danger text-uppercase tracking-wider">
+                          {% if scan_result.type == 'cancelled' %}Invalid / Revoked Ticket{% else %}Ticket Barcode Not Found{% endif %}
+                        </span>
+                        <span class="badge bg-danger-subtle text-danger font-mono-data fw-bold">{{ scan_result.scanned_code }}</span>
+                      </div>
+                      <p class="text-secondary small mb-2">{{ scan_result.message }}</p>
+                      <div class="d-flex align-items-center justify-content-between pt-2 border-top small" style="border-color: #ffe4e6 !important;">
+                        <span class="font-mono-data text-danger">Status: 403 Forbidden / Invalid</span>
+                        <a href="{% url 'registrations:create' %}" class="btn btn-sm btn-danger px-3 py-1 rounded-2">
+                          Manual Registration Desk
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            {% else %}
+              <!-- Default Ready State Mockup -->
+              <div class="p-4 rounded-3 text-center border-dashed" style="border: 2px dashed #cbd5e1; background-color: var(--surface-container-low);">
+                <span class="material-symbols-outlined text-primary mb-2" style="font-size: 40px; opacity: 0.6;">center_focus_strong</span>
+                <div class="fw-semibold text-dark">Optical Scanner Armed & Ready</div>
+                <div class="small text-muted-variant">Awaiting physical barcode scan, NFC tap, or manual ticket input.</div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Edge State Simulation & Quick Flag Indicators -->
+        <div class="row g-3">
+          <!-- Duplicate Warning Simulation Card -->
+          <div class="col-md-6">
+            <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between" style="background-color: #fffbeb; border: 1px solid #fef3c7;">
+              <div class="d-flex align-items-start gap-2">
+                <span class="material-symbols-outlined text-warning" style="font-size: 22px;">warning</span>
+                <div>
+                  <div class="d-flex align-items-center gap-1.5">
+                    <span class="small fw-bold text-warning-emphasis text-uppercase" style="font-size: 11px;">Duplicate Protection</span>
+                    <span class="badge bg-warning-subtle text-dark font-mono-data" style="font-size: 10px;">AUTOMATED</span>
+                  </div>
+                  <div class="small text-secondary mt-1">Prevents badge pass re-use. Detects identical scans across multiple gates in sub-second latency.</div>
+                </div>
+              </div>
+              <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center font-mono-data small" style="font-size: 11px; border-color: #fde68a !important;">
+                <span class="text-muted">Rule: 1 Active Check-in</span>
+                <span class="text-success fw-bold">✓ Enforced</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Revocation Card -->
+          <div class="col-md-6">
+            <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between" style="background-color: #fff1f2; border: 1px solid #ffe4e6;">
+              <div class="d-flex align-items-start gap-2">
+                <span class="material-symbols-outlined text-danger" style="font-size: 22px;">block</span>
+                <div>
+                  <div class="d-flex align-items-center gap-1.5">
+                    <span class="small fw-bold text-danger text-uppercase" style="font-size: 11px;">Revocation Engine</span>
+                    <span class="badge bg-danger-subtle text-danger font-mono-data" style="font-size: 10px;">SECURITY</span>
+                  </div>
+                  <div class="small text-secondary mt-1">Instantly blocks cancelled attendees, unauthorized tiers, or capacity overflow at gate level.</div>
+                </div>
+              </div>
+              <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center font-mono-data small" style="font-size: 11px; border-color: #fecdd3 !important;">
+                <span class="text-muted">Revocation sync: Real-Time</span>
+                <span class="text-danger fw-bold">Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Gate Status & Velocity Monitor -->
+    <div class="col-xl-5">
+      <div class="d-flex flex-column gap-3">
+        <!-- Live Station Scanner Monitor -->
+        <div class="stitch-card p-4">
+          <div class="d-flex align-items-center justify-content-between pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+              <span class="material-symbols-outlined text-primary" style="font-size: 22px;">router</span>
+              <h3 class="h6 fw-bold mb-0 text-dark">Active Gate Scanner Stations</h3>
+            </div>
+            <span class="badge bg-success-subtle text-success font-mono-data fw-semibold px-2 py-0.5 rounded-pill">4 / 4 Online</span>
+          </div>
+          <p class="small text-muted-variant mt-2 mb-3">Live telemetry from wireless handhelds and optical turnstiles.</p>
+
+          <!-- Stations List -->
+          <div class="d-flex flex-column gap-2">
+            {% for st in stations %}
+              <div class="p-2.5 rounded-3 d-flex align-items-center justify-content-between transition-all {% if st.status == 'THIS TERMINAL' %}border border-primary-subtle bg-primary-subtle bg-opacity-25{% else %}bg-light{% endif %}">
+                <div class="d-flex align-items-center gap-2.5">
+                  <div class="rounded-circle {% if st.status == 'THIS TERMINAL' %}bg-primary{% elif st.status_color == 'success' %}bg-success{% else %}bg-warning{% endif %}" style="width: 10px; height: 10px;"></div>
+                  <div>
+                    <div class="d-flex align-items-center gap-1.5">
+                      <span class="fw-semibold small text-dark">{{ st.name }}</span>
+                      <span class="badge bg-white text-muted border font-mono-data" style="font-size: 10px;">{{ st.id }}</span>
+                    </div>
+                    <span class="small text-muted-variant d-block" style="font-size: 11px;">{{ st.desc }}</span>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="font-mono-data fw-bold small text-dark">{{ st.scans }} Scans</div>
+                  <span class="font-mono-data small {% if st.status_color == 'success' %}text-success{% else %}text-muted{% endif %}" style="font-size: 11px;">{{ st.ping }}</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <!-- Rapid Velocity Timeline Strip (Chart) -->
+          <div class="mt-4 pt-3 border-top">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Check-In Velocity Timeline</span>
+              <span class="font-mono-data small fw-semibold text-dark">Peak: 1:30 PM - 2:00 PM</span>
+            </div>
+            <!-- SVG Bar Graph -->
+            <div class="d-flex align-items-end gap-1 pt-2" style="height: 60px;">
+              <div class="flex-grow-1 bg-primary-subtle rounded-top" style="height: 20%;" title="12:00 PM: 6 scans/min"></div>
+              <div class="flex-grow-1 bg-primary-subtle rounded-top" style="height: 35%;" title="12:30 PM: 14 scans/min"></div>
+              <div class="flex-grow-1 bg-primary-subtle bg-opacity-50 rounded-top" style="height: 55%;" title="01:00 PM: 24 scans/min"></div>
+              <div class="flex-grow-1 bg-primary rounded-top opacity-75" style="height: 90%;" title="01:30 PM: 38 scans/min"></div>
+              <div class="flex-grow-1 bg-primary rounded-top" style="height: 100%;" title="02:00 PM: 42 scans/min (Peak)"></div>
+              <div class="flex-grow-1 bg-primary rounded-top opacity-75" style="height: 68%;" title="02:15 PM: 28 scans/min"></div>
+              <div class="flex-grow-1 bg-primary-subtle rounded-top" style="height: 40%;" title="02:30 PM: 16 scans/min"></div>
+              <div class="flex-grow-1 bg-secondary-subtle rounded-top" style="height: 15%;" title="Projected: 6 scans/min"></div>
+            </div>
+            <div class="d-flex justify-content-between font-mono-data text-muted mt-1" style="font-size: 10px;">
+              <span>12:00 PM</span>
+              <span>01:00 PM</span>
+              <span class="fw-bold text-primary">02:00 PM (NOW)</span>
+              <span>03:00 PM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comprehensive Attendance Ledger Table -->
+  <div class="stitch-card p-0 overflow-hidden">
+    <!-- Table Header & Controls Strip -->
+    <div class="p-4 border-bottom">
+      <div class="d-flex flex-column flex-lg-row lg:align-items-center justify-content-between gap-3">
+        <div>
+          <h2 class="h5 fw-bold mb-1 text-dark">Live Attendance Ledger</h2>
+          <p class="small text-muted-variant mb-0">Real-time synchronized credential logs across all campus ingress points.</p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <a href="{% url 'attendance:export_csv' %}{% if selected_event %}?event={{ selected_event.id }}{% endif %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2 small">
+            <span class="material-symbols-outlined" style="font-size: 18px;">file_download</span>
+            <span>Export CSV</span>
+          </a>
+          <a href="{% url 'registrations:create' %}{% if selected_event %}?event={{ selected_event.id }}{% endif %}" class="btn btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-2 small shadow-sm">
+            <span class="material-symbols-outlined" style="font-size: 18px;">person_add</span>
+            <span>Manual Check-In</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Search & Filter Bar -->
+      <form method="get" action="" class="row g-2 mt-2 pt-2">
+        {% if selected_event %}
+          <input type="hidden" name="event" value="{{ selected_event.id }}">
+        {% endif %}
+        <div class="col-md-6 col-lg-8">
+          <div class="position-relative">
+            <span class="material-symbols-outlined position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 20px;">
+              search
+            </span>
+            <input type="text" name="q" value="{{ search_q }}" class="form-control form-stitch-control ps-5" placeholder="Search ticket code, attendee name, email...">
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4 d-flex gap-2">
+          <button type="submit" class="btn btn-secondary px-3 py-2 rounded-2 w-100 d-inline-flex align-items-center justify-content-center gap-1.5">
+            <span class="material-symbols-outlined" style="font-size: 18px;">filter_alt</span>
+            <span>Filter Ledger</span>
+          </button>
+          {% if search_q %}
+            <a href="?{% if selected_event %}event={{ selected_event.id }}{% endif %}" class="btn btn-outline-secondary px-3 py-2 rounded-2" title="Clear filter">
+              <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+            </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+      <table class="table align-middle mb-0 stitch-table">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4">Ticket ID</th>
+            <th>Attendee & Role</th>
+            <th>Affiliation / Event</th>
+            <th>Gate & Timestamp</th>
+            <th>Status</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if recent_checkins %}
+            {% for item in recent_checkins %}
+              <tr>
+                <td class="ps-4">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-mono-data fw-bold px-2 py-1">
+                      {{ item.ticket_id }}
+                    </span>
+                    <span class="material-symbols-outlined text-primary small" style="font-size: 16px;" title="NFC Tag Verified">contactless</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2.5">
+                    <div class="rounded-circle text-white fw-bold d-flex align-items-center justify-content-center shrink-0" style="width: 34px; height: 34px; background: linear-gradient(135deg, #1d4ed8, #2563eb); font-size: 12px;">
+                      {{ item.registration.name|slice:":2"|upper }}
+                    </div>
+                    <div>
+                      <a href="{% url 'registrations:detail' item.registration.id %}" class="fw-bold text-dark text-decoration-none d-block">
+                        {{ item.registration.name }}
+                      </a>
+                      <span class="small text-muted-variant font-mono-data" style="font-size: 11px;">{{ item.registration.registration_id }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="text-truncate" style="max-width: 250px;">
+                    <div class="fw-medium text-dark">{{ item.registration.event.name }}</div>
+                    <div class="small text-muted-variant">{{ item.registration.email }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="font-mono-data fw-semibold text-dark">{{ item.check_in_time|date:"h:i:s A" }}</div>
+                  <div class="small text-muted-variant">{{ item.notes|default:"Gate 4 VIP North" }}</div>
+                </td>
+                <td>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill small fw-semibold">
+                    ✓ Checked In
+                  </span>
+                </td>
+                <td class="text-end pe-4">
+                  <div class="d-flex align-items-center justify-content-end gap-1">
+                    <a href="{% url 'registrations:detail' item.registration.id %}" class="btn btn-sm btn-outline-secondary p-1 rounded-2" title="Print Pass Badge">
+                      <span class="material-symbols-outlined" style="font-size: 16px;">print</span>
+                    </a>
+                    <a href="{% url 'registrations:edit' item.registration.id %}" class="btn btn-sm btn-outline-secondary p-1 rounded-2" title="Edit Contact">
+                      <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-5">
+                <span class="material-symbols-outlined text-muted mb-2" style="font-size: 40px;">assignment_late</span>
+                <div class="fw-semibold text-dark">No check-ins logged yet</div>
+                <div class="small text-muted">Scan an attendee barcode above to record the first gate admission.</div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Sound Chime Synthesizer & Auto-Focus Scanner Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const ticketInput = document.getElementById('ticketInput');
+  const autoCheckinSwitch = document.getElementById('autoCheckinSwitch');
+  const audioChimeSwitch = document.getElementById('audioChimeSwitch');
+  const scannerForm = document.getElementById('scannerForm');
+
+  // Keep input focused continuously for barcode guns
+  if (ticketInput) {
+    ticketInput.focus();
+    document.addEventListener('click', function(e) {
+      // Do not steal focus if clicking other inputs or links
+      if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A'].indexOf(e.target.tagName) === -1) {
+        ticketInput.focus();
+      }
+    });
+  }
+
+  // Audio Chime Generator using HTML5 Web Audio API
+  function playBeep(type) {
+    if (!audioChimeSwitch || !audioChimeSwitch.checked) return;
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'success') {
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+        osc.frequency.setValueAtTime(1174.66, audioCtx.currentTime + 0.1); // D6
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+      } else if (type === 'warning') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(330, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } else {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      }
+    } catch(err) {
+      console.log('AudioContext not active:', err);
+    }
+  }
+
+  // Check if there was an active scan result to play chime
+  {% if scan_result %}
+    playBeep('{{ scan_result.status }}');
+  {% endif %}
+});
+</script>
+{% endblock %}

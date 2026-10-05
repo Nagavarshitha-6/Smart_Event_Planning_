@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }} - EventCore Platform{% endblock %}
+{% block breadcrumb %}<a href="{% url 'budgets:list' %}" class="text-muted-variant text-decoration-none">Budgets &amp; Expenses</a> &gt; Edit Line Item{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 900px; margin: 0 auto;">
+  <div class="d-flex align-items-center justify-content-between">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge bg-secondary-subtle text-secondary-emphasis font-mono-data px-2 py-0.5" style="font-size: 11px;">TRANSACTION REVISION</span>
+        <span class="font-mono-data text-muted small">{{ expense.expense_id }}</span>
+      </div>
+      <h1 class="display-title mb-1">Edit Ledger Line Item</h1>
+      <p class="text-muted-variant mb-0">Modify amount, vendor attribution, or payment status for this expense.</p>
+    </div>
+
+    <a href="{% url 'budgets:list' %}" class="btn btn-outline-secondary d-flex align-items-center gap-2 font-label-md">
+      <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+      <span>Back to Ledger</span>
+    </a>
+  </div>
+
+  <div class="stitch-card p-4">
+    <form method="POST">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label font-mono-data small text-muted">EXPENSE ID</label>
+          {{ form.expense_id }}
+          {% if form.expense_id.errors %}<div class="text-danger small mt-1">{{ form.expense_id.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label font-mono-data small text-muted">EVENT ASSOCIATION *</label>
+          {{ form.event }}
+          {% if form.event.errors %}<div class="text-danger small mt-1">{{ form.event.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label font-mono-data small text-muted">DISBURSEMENT CATEGORY *</label>
+          {{ form.category }}
+          {% if form.category.errors %}<div class="text-danger small mt-1">{{ form.category.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label font-mono-data small text-muted">VENDOR / PAYEE</label>
+          {{ form.vendor }}
+          {% if form.vendor.errors %}<div class="text-danger small mt-1">{{ form.vendor.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label font-mono-data small text-muted">AMOUNT (USD) *</label>
+          {{ form.amount }}
+          {% if form.amount.errors %}<div class="text-danger small mt-1">{{ form.amount.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label font-mono-data small text-muted">TRANSACTION DATE *</label>
+          {{ form.date }}
+          {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label font-mono-data small text-muted">PAYMENT STATUS *</label>
+          {{ form.payment_status }}
+          {% if form.payment_status.errors %}<div class="text-danger small mt-1">{{ form.payment_status.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-8">
+          <label class="form-label font-mono-data small text-muted">PURCHASE ORDER / RECEIPT REFERENCE</label>
+          {{ form.receipt_ref }}
+          {% if form.receipt_ref.errors %}<div class="text-danger small mt-1">{{ form.receipt_ref.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="form-check pb-2">
+            {{ form.is_authorized }}
+            <label class="form-check-label small fw-semibold text-dark" for="{{ form.is_authorized.id_for_label }}">
+              Dual Sign-Off Authorized
+            </label>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label font-mono-data small text-muted">ITEM DESCRIPTION &amp; SPECIFICATION *</label>
+          {{ form.description }}
+          {% if form.description.errors %}<div class="text-danger small mt-1">{{ form.description.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between pt-4 mt-4 border-top">
+        <a href="{% url 'budgets:delete_expense' expense.id %}" class="btn btn-outline-danger d-flex align-items-center gap-2 font-label-md">
+          <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+          <span>Delete Line Item</span>
+        </a>
+        <div class="d-flex align-items-center gap-2">
+          <a href="{% url 'budgets:list' %}" class="btn btn-light border font-label-md">Cancel</a>
+          <button type="submit" class="btn btn-primary-stitch px-4 font-label-md">Save Changes</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

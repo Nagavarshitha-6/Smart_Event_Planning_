@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Edit Vendor: {{ vendor.name }}{% else %}Onboard New Vendor{% endif %} | EventCore Platform{% endblock %}
+{% block breadcrumb %}{% if is_edit %}Edit Vendor{% else %}Onboard Vendor{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 900px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="d-flex flex-column flex-sm-row sm:items-center justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">{% if is_edit %}edit_note{% else %}corporate_fare{% endif %}</span>
+        <span class="text-uppercase tracking-wider">{% if is_edit %}Vendor Accreditation Update{% else %}Institutional Procurement{% endif %}</span>
+      </div>
+      <h1 class="display-title mb-1">{% if is_edit %}Edit Vendor Profile{% else %}Onboard New Vendor Partner{% endif %}</h1>
+      <p class="text-muted-variant mb-0">Register institutional service providers, assign SLA compliance tier, and configure primary liaison contacts.</p>
+    </div>
+    <a href="{% url 'vendors:list' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2 align-self-start">
+      <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+      <span>Back to Directory</span>
+    </a>
+  </div>
+
+  <!-- Form Card -->
+  <div class="stitch-card p-4">
+    {% if form.errors %}
+      <div class="alert alert-danger small py-2 px-3 mb-4 rounded-2" role="alert">
+        <div class="fw-semibold">Please correct the validation errors below:</div>
+        <ul class="mb-0 mt-1 ps-3">
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" action="">
+      {% csrf_token %}
+
+      <!-- Section 1: Identification & Domain -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">business</span>
+          <span>Entity Information</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="{{ form.vendor_id.id_for_label }}" class="form-stitch-label">Vendor ID <span class="text-danger">*</span></label>
+            {{ form.vendor_id }}
+            <span class="small text-muted-variant mt-1 d-block font-mono-data" style="font-size: 11px;">Unique institutional ID (e.g. VND-401)</span>
+          </div>
+          <div class="col-md-8">
+            <label for="{{ form.name.id_for_label }}" class="form-stitch-label">Company / Legal Entity Name <span class="text-danger">*</span></label>
+            {{ form.name }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.service_type.id_for_label }}" class="form-stitch-label">Service Domain / Classification <span class="text-danger">*</span></label>
+            {{ form.service_type }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.tier.id_for_label }}" class="form-stitch-label">Procurement Tier</label>
+            {{ form.tier }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Contact Liaison -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">contact_mail</span>
+          <span>Field Lead & Communication</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="{{ form.contact_person.id_for_label }}" class="form-stitch-label">Field Lead / Executive <span class="text-danger">*</span></label>
+            {{ form.contact_person }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.phone.id_for_label }}" class="form-stitch-label">Direct Phone <span class="text-danger">*</span></label>
+            {{ form.phone }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.email.id_for_label }}" class="form-stitch-label">Dispatch Email <span class="text-danger">*</span></label>
+            {{ form.email }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: SLA & Insurance Compliance -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">verified_user</span>
+          <span>SLA Certification & Insurance</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="{{ form.status.id_for_label }}" class="form-stitch-label">Registry Status <span class="text-danger">*</span></label>
+            {{ form.status }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.sla_status.id_for_label }}" class="form-stitch-label">SLA Clearance Level</label>
+            {{ form.sla_status }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.coi_expiry.id_for_label }}" class="form-stitch-label">Certificate of Insurance (COI) Expiry</label>
+            {{ form.coi_expiry }}
+          </div>
+          <div class="col-12">
+            <label for="{{ form.active_event.id_for_label }}" class="form-stitch-label">Active Event Session (Optional)</label>
+            {{ form.active_event }}
+            <span class="small text-muted-variant mt-1 d-block" style="font-size: 11px;">Current primary campus operation where this vendor is assigned.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top">
+        <a href="{% if is_edit %}{% url 'vendors:detail' vendor.id %}{% else %}{% url 'vendors:list' %}{% endif %}" class="btn btn-outline-secondary px-4 py-2 rounded-2">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 rounded-2 shadow-sm">
+          <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+          <span>{% if is_edit %}Save Changes{% else %}Onboard Provider{% endif %}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

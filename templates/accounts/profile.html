@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User Profile &amp; Governance{% endblock %}
+{% block breadcrumb %}User Profile{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4">
+  <!-- Page Header -->
+  <div class="d-flex flex-column flex-md-row md:items-center justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">admin_panel_settings</span>
+        <span class="text-uppercase tracking-wider">Identity &amp; Governance</span>
+      </div>
+      <h1 class="display-title mb-1">User Profile</h1>
+      <p class="text-muted-variant mb-0">Manage your administrative credentials, personal details, and security settings.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">lock_reset</span>
+        <span>Change Password</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: User Summary Card -->
+    <div class="col-lg-4">
+      <div class="stitch-card text-center p-4">
+        <div class="user-avatar mx-auto mb-3 shadow-sm" style="width: 72px; height: 72px; font-size: 28px;">
+          {{ user.first_name|default:user.username|slice:":1"|upper }}
+        </div>
+        <h2 class="h5 fw-bold mb-1 text-on-surface">{{ user.get_full_name|default:user.username }}</h2>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 mb-3">
+          {% if user.is_superuser %}System Superadmin{% elif user.is_staff %}Staff Administrator{% else %}Event Coordinator{% endif %}
+        </span>
+        <p class="small text-muted-variant mb-4">{{ user.email|default:"No email configured" }}</p>
+
+        <div class="text-start border-top pt-3 d-flex flex-column gap-2 small">
+          <div class="d-flex justify-content-between">
+            <span class="text-muted-variant">Username:</span>
+            <span class="font-mono-data fw-semibold">{{ user.username }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted-variant">Account Status:</span>
+            <span class="text-success fw-semibold">Active &amp; Verified</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted-variant">Date Joined:</span>
+            <span class="font-mono-data">{{ user.date_joined|date:"M d, Y" }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted-variant">Last Login:</span>
+            <span class="font-mono-data">{{ user.last_login|date:"M d, Y H:i"|default:"Current Session" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Profile Form -->
+    <div class="col-lg-8">
+      <div class="stitch-card p-4">
+        <div class="card-header-clean mb-4">
+          <div>
+            <h2 class="h6 fw-bold mb-0">Personal Information</h2>
+            <span class="small text-muted-variant">Update your account name and institutional contact email.</span>
+          </div>
+        </div>
+
+        <form method="post" action="{% url 'accounts:profile' %}">
+          {% csrf_token %}
+          <div class="row g-3 mb-4">
+            <div class="col-sm-6">
+              <label for="firstName" class="form-stitch-label">First Name</label>
+              <input type="text" class="form-stitch-control" id="firstName" name="first_name" value="{{ user.first_name }}">
+            </div>
+            <div class="col-sm-6">
+              <label for="lastName" class="form-stitch-label">Last Name</label>
+              <input type="text" class="form-stitch-control" id="lastName" name="last_name" value="{{ user.last_name }}">
+            </div>
+            <div class="col-12">
+              <label for="userEmail" class="form-stitch-label">Institutional Email Address</label>
+              <input type="email" class="form-stitch-control" id="userEmail" name="email" value="{{ user.email }}">
+              <span class="small text-muted-variant mt-1 d-block">Official communications, registration digests, and conflict alerts are sent here.</span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary-stitch px-4 py-2 rounded-2 fw-semibold d-inline-flex align-items-center gap-2">
+              <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+              <span>Save Changes</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Resource Coordination & Inventory | EventCore Platform{% endblock %}
+{% block breadcrumb %}Resources{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 1720px; margin: 0 auto; width: 100%;">
+
+  <!-- Top Action & Engine Telemetry Header -->
+  <div class="d-flex flex-column flex-lg-row lg:align-items-center justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-muted-variant small text-uppercase tracking-wider mb-1">
+        <span>Operations Logistics</span>
+        <span>/</span>
+        <span class="text-primary fw-semibold">Campus Assets</span>
+      </div>
+      <h1 class="display-title mb-1">Resource Coordination & Inventory</h1>
+      <p class="text-muted-variant mb-0">Central campus physical asset tracking, availability matrix, and hardware health status.</p>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <form method="post" action="{% url 'resources:run_audit' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger bg-white d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 shadow-sm border-0">
+          <span class="material-symbols-outlined text-danger" style="font-size: 18px;">troubleshoot</span>
+          <span>Run Diagnostics / Conflict Audit</span>
+        </button>
+      </form>
+      <a href="{% url 'resources:export_csv' %}" class="btn btn-outline-secondary bg-white d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 shadow-sm border-0" title="Export CSV">
+        <span class="material-symbols-outlined" style="font-size: 18px;">file_download</span>
+        <span>Export CSV</span>
+      </a>
+      <a href="{% url 'resources:create' %}" class="btn btn-primary d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 shadow-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+        <span>+ Add Resource</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 5 Executive Metric Cards (Matching Stitch Screen) -->
+  <div class="row g-3">
+    <!-- Total Resources -->
+    <div class="col-sm-6 col-lg">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Total Resources</span>
+          <div class="rounded-3 p-1.5 bg-light text-primary d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">inventory_2</span>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="h2 fw-bold text-dark tracking-tight mb-0">{{ total_resources }}</div>
+          <div class="d-flex align-items-center gap-1.5 mt-1 small text-muted-variant">
+            <span class="rounded-circle bg-secondary" style="width: 6px; height: 6px;"></span>
+            <span>All cataloged campus assets</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Available Now -->
+    <div class="col-sm-6 col-lg">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Available Now</span>
+          <div class="rounded-3 p-1.5 d-flex align-items-center justify-content-center" style="background-color: #ecfdf5; color: #10b981; width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="h2 fw-bold text-dark tracking-tight mb-0">{{ available_now }}</div>
+          <div class="d-flex align-items-center gap-1.5 mt-1 small text-success fw-semibold">
+            <span class="spinner-grow spinner-grow-sm me-1" role="status" style="width: 6px; height: 6px; color: #10b981;"></span>
+            <span>Ready for instant reservation</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Currently Assigned -->
+    <div class="col-sm-6 col-lg">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Currently Assigned</span>
+          <div class="rounded-3 p-1.5 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">event_seat</span>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="h2 fw-bold text-dark tracking-tight mb-0">{{ assigned_count }}</div>
+          <div class="d-flex align-items-center gap-1.5 mt-1 small text-primary">
+            <span class="rounded-circle bg-primary" style="width: 6px; height: 6px;"></span>
+            <span>Deployed across active events</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Under Maintenance -->
+    <div class="col-sm-6 col-lg">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-muted-variant text-uppercase tracking-wider fw-semibold" style="font-size: 11px;">Under Maintenance</span>
+          <div class="rounded-3 p-1.5 bg-light text-secondary d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">build_circle</span>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="h2 fw-bold text-dark tracking-tight mb-0">{{ maintenance_count }}</div>
+          <div class="d-flex align-items-center gap-1.5 mt-1 small text-muted-variant">
+            <span class="rounded-circle bg-secondary-subtle" style="width: 6px; height: 6px;"></span>
+            <span>Servicing in Depot Bay 4</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Critical Conflicts -->
+    <div class="col-sm-6 col-lg">
+      <div class="stitch-card p-3 h-100 d-flex flex-column justify-content-between position-relative overflow-hidden" style="background-color: #fff1f2; border: 1px solid #ffe4e6;">
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="small text-danger text-uppercase tracking-wider fw-bold" style="font-size: 11px;">Critical Conflicts</span>
+          <div class="rounded-3 p-1.5 d-flex align-items-center justify-content-center" style="background-color: #fee2e2; color: #dc2626; width: 34px; height: 34px;">
+            <span class="material-symbols-outlined" style="font-size: 18px;">fmd_bad</span>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="h2 fw-bold text-danger tracking-tight mb-0">{{ conflicts_count }}</div>
+          <div class="d-flex align-items-center gap-1.5 mt-1 small text-danger fw-semibold">
+            <span class="rounded-circle bg-danger" style="width: 6px; height: 6px;"></span>
+            <span>{% if conflicts_count > 0 %}<a href="{% url 'resources:conflicts' %}" class="text-danger text-decoration-none">Inspect & Resolve</a>{% else %}0 Overlaps Detected{% endif %}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly Utilization & Health Diagnostics Row -->
+  <div class="row g-4">
+    <!-- Weekly Utilization Bar Chart Card -->
+    <div class="col-xl-8">
+      <div class="stitch-card p-4 h-100 d-flex flex-column justify-content-between gap-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h2 class="h6 fw-bold mb-0 text-dark">Weekly Utilization & Demand Flux</h2>
+            <p class="small text-muted-variant mb-0">Cross-campus resource peak hours (AV, Facilities, Halls)</p>
+          </div>
+          <span class="badge bg-secondary-subtle text-dark px-2.5 py-1 rounded-pill small font-mono-data">High Load Wed / Fri</span>
+        </div>
+
+        <!-- SVG Bar Chart -->
+        <div class="d-flex align-items-end gap-3 pt-3" style="height: 120px;">
+          <div class="flex-grow-1 d-flex flex-column align-items-center gap-1 h-100 justify-content-end">
+            <div class="w-100 bg-light rounded-top border-top hover-primary transition-all" style="height: 48%; background-color: #e2e8f0;" title="Mon: 48% load"></div>
+            <span class="font-mono-data small text-muted-variant" style="font-size: 11px;">Mon</span>
+          </div>
+          <div class="flex-grow-1 d-flex flex-column align-items-center gap-1 h-100 justify-content-end">
+            <div class="w-100 bg-light rounded-top border-top hover-primary transition-all" style="height: 64%; background-color: #cbd5e1;" title="Tue: 64% load"></div>
+            <span class="font-mono-data small text-muted-variant" style="font-size: 11px;">Tue</span>
+          </div>
+          <div class="flex-grow-1 d-flex flex-column align-items-center gap-1 h-100 justify-content-end">
+            <div class="w-100 bg-primary rounded-top shadow-sm transition-all" style="height: 88%;" title="Wed: 88% load (Peak)"></div>
+            <span class="font-mono-data small fw-bold text-dark" style="font-size: 11px;">Wed</span>
+          </div>
+          <div class="flex-grow-1 d-flex flex-column align-items-center gap-1 h-100 justify-content-end">
+            <div class="w-100 bg-light rounded-top border-top hover-primary transition-all" style="height: 58%; background-color: #cbd5e1;" title="Thu: 58% load"></div>
+            <span class="font-mono-data small text-muted-variant" style="font-size: 11px;">Thu</span>
+          </div>
+          <div class="flex-grow-1 d-flex flex-column align-items-center gap-1 h-100 justify-content-end">
+            <div class="w-100 bg-primary rounded-top shadow-sm transition-all opacity-75" style="height: 94%;" title="Fri: 94% load (Peak)"></div>
+            <span class="font-mono-data small fw-bold text-dark" style="font-size: 11px;">Fri</span>
+          </div>
+          <div class="flex-grow-1 d-flex flex-column align-items-center gap-1 h-100 justify-content-end">
+            <div class="w-100 bg-light rounded-top border-top hover-primary transition-all" style="height: 32%; background-color: #f1f5f9;" title="Sat: 32% load"></div>
+            <span class="font-mono-data small text-muted-variant" style="font-size: 11px;">Sat</span>
+          </div>
+          <div class="flex-grow-1 d-flex flex-column align-items-center gap-1 h-100 justify-content-end">
+            <div class="w-100 bg-light rounded-top border-top hover-primary transition-all" style="height: 18%; background-color: #f8fafc;" title="Sun: 18% load"></div>
+            <span class="font-mono-data small text-muted-variant" style="font-size: 11px;">Sun</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health Diagnostics Card -->
+    <div class="col-xl-4">
+      <div class="stitch-card p-4 h-100 d-flex flex-column justify-content-between">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h2 class="h6 fw-bold mb-0 text-dark">Hardware Diagnostics</h2>
+            <p class="small text-muted-variant mb-0">Sensor health & asset readiness index</p>
+          </div>
+          <span class="material-symbols-outlined text-primary" style="font-size: 22px;">sensors</span>
+        </div>
+
+        <div class="d-flex align-items-center gap-3 my-2">
+          <!-- Radial SVG Gauge -->
+          <div class="position-relative" style="width: 80px; height: 80px;">
+            <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3.5" />
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#0037b0" stroke-dasharray="94.8, 100" stroke-linecap="round" stroke-width="3.5" />
+            </svg>
+          </div>
+          <div class="d-flex flex-column">
+            <div class="h3 fw-bold text-dark mb-0">94.8%</div>
+            <span class="small text-muted-variant">Operational Asset Index</span>
+            <span class="small text-success fw-semibold">All A/V & Rigging hubs online</span>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between pt-2 border-top small text-muted-variant font-mono-data">
+          <span>Depot Bays 1-4 Synchronized</span>
+          <span class="text-primary fw-semibold">Telemetry OK</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resource Catalog & Master Table Strip -->
+  <div class="stitch-card p-0 overflow-hidden">
+    <!-- Header with Category Filter Tabs & Search -->
+    <div class="p-4 border-bottom">
+      <div class="d-flex flex-column flex-lg-row lg:align-items-center justify-content-between gap-3">
+        <!-- Filter Tabs -->
+        <div class="d-flex flex-wrap align-items-center gap-1.5" id="resourceFilterContainer">
+          <a href="?category=all{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if cat_filter == 'all' %}btn-primary{% else %}btn-light text-secondary{% endif %}">
+            All Resources ({{ counts.all }})
+          </a>
+          <a href="?category=auditoriums{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if cat_filter == 'auditoriums' %}btn-primary{% else %}btn-light text-secondary{% endif %}">
+            Auditoriums & Halls ({{ counts.auditoriums }})
+          </a>
+          <a href="?category=classrooms{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if cat_filter == 'classrooms' %}btn-primary{% else %}btn-light text-secondary{% endif %}">
+            Classrooms ({{ counts.classrooms }})
+          </a>
+          <a href="?category=projectors{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if cat_filter == 'projectors' %}btn-primary{% else %}btn-light text-secondary{% endif %}">
+            Projectors & Displays ({{ counts.projectors }})
+          </a>
+          <a href="?category=audio{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if cat_filter == 'audio' %}btn-primary{% else %}btn-light text-secondary{% endif %}">
+            Audio & Sound ({{ counts.audio }})
+          </a>
+          <a href="?category=cameras{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if cat_filter == 'cameras' %}btn-primary{% else %}btn-light text-secondary{% endif %}">
+            Cameras & Broadcast ({{ counts.cameras }})
+          </a>
+          <a href="?category=furniture{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if cat_filter == 'furniture' %}btn-primary{% else %}btn-light text-secondary{% endif %}">
+            Furniture & Seating ({{ counts.furniture }})
+          </a>
+        </div>
+
+        <!-- Search & Status Select -->
+        <form method="get" action="" class="d-flex align-items-center gap-2">
+          {% if cat_filter != 'all' %}
+            <input type="hidden" name="category" value="{{ cat_filter }}">
+          {% endif %}
+          <div class="position-relative" style="min-width: 200px;">
+            <span class="material-symbols-outlined position-absolute text-muted" style="left: 10px; top: 50%; transform: translateY(-50%); font-size: 18px;">search</span>
+            <input type="text" name="q" value="{{ q }}" class="form-control form-stitch-control ps-5 py-1.5 small" placeholder="Search asset, ID, bay...">
+          </div>
+          <select name="status" onchange="this.form.submit()" class="form-select form-stitch-control py-1.5 small" style="width: auto;">
+            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+            <option value="Available" {% if status_filter == 'Available' %}selected{% endif %}>Available</option>
+            <option value="Assigned" {% if status_filter == 'Assigned' %}selected{% endif %}>Assigned</option>
+            <option value="Maintenance" {% if status_filter == 'Maintenance' %}selected{% endif %}>Maintenance</option>
+          </select>
+          {% if q or status_filter != 'all' or cat_filter != 'all' %}
+            <a href="{% url 'resources:list' %}" class="btn btn-outline-secondary px-2 py-1.5 rounded-2" title="Reset Filters">
+              <span class="material-symbols-outlined" style="font-size: 18px;">restart_alt</span>
+            </a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+      <table class="table align-middle mb-0 stitch-table">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4">Resource & ID</th>
+            <th>Category / Type</th>
+            <th>Location & Bay</th>
+            <th>Quantity</th>
+            <th>Real-Time Status</th>
+            <th class="text-end pe-4">Quick Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if resources %}
+            {% for r in resources %}
+              <tr class="hover-bg transition-colors">
+                <td class="ps-4">
+                  <div class="d-flex align-items-center gap-2.5">
+                    <div class="rounded-3 p-2 bg-light text-primary d-flex align-items-center justify-content-center shrink-0" style="width: 38px; height: 38px;">
+                      <span class="material-symbols-outlined" style="font-size: 20px;">
+                        {% if r.resource_type == 'Auditorium' %}apartment
+                        {% elif r.resource_type == 'Projector' %}videocam
+                        {% elif r.resource_type == 'Microphone' %}mic
+                        {% elif r.resource_type == 'Sound System' %}volume_up
+                        {% elif r.resource_type == 'Tables' or r.resource_type == 'Chairs' %}table_restaurant
+                        {% else %}inventory_2{% endif %}
+                      </span>
+                    </div>
+                    <div>
+                      <span class="fw-bold text-dark d-block">{{ r.name }}</span>
+                      <span class="font-mono-data small text-muted-variant" style="font-size: 11px;">{{ r.resource_id }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge rounded-pill bg-light text-dark border px-2.5 py-1 small fw-medium">
+                    {{ r.resource_type }}
+                  </span>
+                </td>
+                <td>
+                  <span class="text-dark small d-block">{{ r.location }}</span>
+                  <span class="small text-muted font-mono-data" style="font-size: 11px;">Central Logistics Hub</span>
+                </td>
+                <td>
+                  <span class="font-mono-data fw-bold text-dark">{{ r.quantity }}</span>
+                  <span class="small text-muted">units</span>
+                </td>
+                <td>
+                  {% if r.status == 'Available' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill small fw-semibold">
+                      ✓ Available
+                    </span>
+                  {% elif r.status == 'Assigned' %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill small fw-semibold">
+                      Assigned
+                    </span>
+                  {% elif r.status == 'Maintenance' %}
+                    <span class="badge bg-secondary-subtle text-dark border px-2.5 py-1 rounded-pill small fw-semibold">
+                      In Maintenance
+                    </span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1 rounded-pill small fw-semibold">
+                      Conflicted
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="text-end pe-4">
+                  <div class="d-flex align-items-center justify-end gap-1">
+                    <a href="{% url 'resources:create_allocation' %}?resource={{ r.id }}" class="btn btn-sm btn-outline-primary p-1.5 rounded-2" title="Allocate to Event">
+                      <span class="material-symbols-outlined" style="font-size: 16px;">calendar_add_on</span>
+                    </a>
+                    <a href="{% url 'resources:edit' r.id %}" class="btn btn-sm btn-outline-secondary p-1.5 rounded-2" title="Edit Asset">
+                      <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+                    </a>
+                    <a href="{% url 'resources:delete' r.id %}" class="btn btn-sm btn-outline-danger p-1.5 rounded-2" title="Decommission">
+                      <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-5">
+                <span class="material-symbols-outlined text-muted mb-2" style="font-size: 38px;">inventory_2</span>
+                <div class="fw-semibold text-dark">No campus resources found</div>
+                <div class="small text-muted mt-1">Adjust filters or register new inventory above.</div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

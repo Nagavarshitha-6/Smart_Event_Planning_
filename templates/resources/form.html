@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if is_edit %}Edit Resource: {{ resource.name }}{% else %}Register Campus Resource{% endif %} | EventCore Platform{% endblock %}
+{% block breadcrumb %}{% if is_edit %}Edit Resource{% else %}Add Resource{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4" style="max-width: 860px; margin: 0 auto;">
+  <!-- Header -->
+  <div class="d-flex flex-column flex-sm-row sm:items-center justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">{% if is_edit %}edit_note{% else %}inventory_2{% endif %}</span>
+        <span class="text-uppercase tracking-wider">{% if is_edit %}Asset Configuration{% else %}Campus Inventory Catalog{% endif %}</span>
+      </div>
+      <h1 class="display-title mb-1">{% if is_edit %}Edit Resource{% else %}Register New Resource Asset{% endif %}</h1>
+      <p class="text-muted-variant mb-0">Track hardware specifications, room seating capacity, inventory depots, and readiness status.</p>
+    </div>
+    <a href="{% url 'resources:list' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2 align-self-start">
+      <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+      <span>Back to Inventory</span>
+    </a>
+  </div>
+
+  <!-- Form Card -->
+  <div class="stitch-card p-4">
+    {% if form.errors %}
+      <div class="alert alert-danger small py-2 px-3 mb-4 rounded-2" role="alert">
+        <div class="fw-semibold">Please correct the validation errors:</div>
+        <ul class="mb-0 mt-1 ps-3">
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" action="">
+      {% csrf_token %}
+
+      <!-- Section: Identification & Category -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">badge</span>
+          <span>Asset Specification</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="{{ form.resource_id.id_for_label }}" class="form-stitch-label">Resource ID <span class="text-danger">*</span></label>
+            {{ form.resource_id }}
+            <span class="small text-muted-variant mt-1 d-block font-mono-data" style="font-size: 11px;">Barcode tag (e.g. RES-AUD-01)</span>
+          </div>
+          <div class="col-md-8">
+            <label for="{{ form.name.id_for_label }}" class="form-stitch-label">Asset Title / Space Name <span class="text-danger">*</span></label>
+            {{ form.name }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.resource_type.id_for_label }}" class="form-stitch-label">Classification / Type <span class="text-danger">*</span></label>
+            {{ form.resource_type }}
+          </div>
+          <div class="col-md-6">
+            <label for="{{ form.quantity.id_for_label }}" class="form-stitch-label">Available Units / Capacity <span class="text-danger">*</span></label>
+            {{ form.quantity }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Location & Status -->
+      <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3 pb-2 border-bottom text-primary d-flex align-items-center gap-2">
+          <span class="material-symbols-outlined" style="font-size: 18px;">place</span>
+          <span>Depot Staging & Hardware Status</span>
+        </h2>
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label for="{{ form.location.id_for_label }}" class="form-stitch-label">Location / Depot Bay <span class="text-danger">*</span></label>
+            {{ form.location }}
+          </div>
+          <div class="col-md-4">
+            <label for="{{ form.status.id_for_label }}" class="form-stitch-label">Operational Status <span class="text-danger">*</span></label>
+            {{ form.status }}
+          </div>
+          <div class="col-12">
+            <label for="{{ form.description.id_for_label }}" class="form-stitch-label">Technical Notes & Specifications</label>
+            {{ form.description }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top">
+        <a href="{% url 'resources:list' %}" class="btn btn-outline-secondary px-4 py-2 rounded-2">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2 rounded-2 shadow-sm">
+          <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+          <span>{% if is_edit %}Save Changes{% else %}Register Asset{% endif %}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

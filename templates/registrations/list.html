@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Attendees &amp; Guest Registrations | EventCore Platform{% endblock %}
+{% block breadcrumb %}Attendees{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column gap-4">
+  <!-- Top Action Area -->
+  <div class="d-flex flex-column flex-md-row md:items-end justify-content-between gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2 text-primary small fw-semibold mb-1">
+        <span class="material-symbols-outlined" style="font-size: 16px;">groups</span>
+        <span class="text-uppercase tracking-wider">Campus Guest Logistics</span>
+      </div>
+      <h1 class="display-title mb-1">Attendees &amp; Registrations</h1>
+      <p class="text-muted-variant mb-0">Oversee guest allocations, unique digital barcode passes, and institutional clearance.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <a href="{% url 'attendance:scanner' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2">
+        <span class="material-symbols-outlined" style="font-size: 18px;">qr_code_scanner</span>
+        <span>Ticket Scanner</span>
+      </a>
+      <a href="{% url 'registrations:create' %}" class="btn btn-primary-stitch d-inline-flex align-items-center gap-2 px-3 py-2 rounded-2 shadow-sm">
+        <span class="material-symbols-outlined" style="font-size: 18px;">person_add</span>
+        <span>Register Attendee</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Quick Metric Chips -->
+  <div class="row g-3">
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kpi-title">Total Registrations</span>
+          <div class="kpi-value fs-4 mt-1">{{ total_count }}</div>
+          <span class="small text-muted-variant font-mono-data">All event rosters</span>
+        </div>
+        <div class="kpi-icon-wrap text-primary" style="width: 40px; height: 40px;">
+          <span class="material-symbols-outlined" style="font-size: 20px;">badge</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kpi-title text-success">Checked In</span>
+          <div class="kpi-value fs-4 mt-1 text-success">{{ checked_in_count }}</div>
+          <span class="small text-success font-mono-data">Verified at gates</span>
+        </div>
+        <div class="kpi-icon-wrap bg-success-subtle text-success" style="width: 40px; height: 40px;">
+          <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kpi-title text-primary">Pending Turnout</span>
+          <div class="kpi-value fs-4 mt-1 text-primary">{{ registered_pending_count }}</div>
+          <span class="small text-muted-variant font-mono-data">Expected passes</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 40px; height: 40px;">
+          <span class="material-symbols-outlined" style="font-size: 20px;">pending_actions</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stitch-card p-3 d-flex align-items-center justify-content-between">
+        <div>
+          <span class="kpi-title text-danger">Cancelled</span>
+          <div class="kpi-value fs-4 mt-1 text-danger">{{ cancelled_count }}</div>
+          <span class="small text-muted-variant font-mono-data">Revoked / Withdrawn</span>
+        </div>
+        <div class="kpi-icon-wrap bg-danger-subtle text-danger" style="width: 40px; height: 40px;">
+          <span class="material-symbols-outlined" style="font-size: 20px;">cancel</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="stitch-card p-3">
+    <form method="get" action="{% url 'registrations:list' %}" class="row g-2 align-items-center">
+      <div class="col-12 col-md-5">
+        <div class="position-relative">
+          <span class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y ms-3 text-muted-variant" style="font-size: 18px;">search</span>
+          <input type="text" name="q" value="{{ q }}" class="form-stitch-control ps-5" placeholder="Search attendee name, email, or ticket ID (TKT-XXXX)...">
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <select name="event" class="form-stitch-control" onchange="this.form.submit()">
+          <option value="">All Events</option>
+          {% for ev in events_list %}
+            <option value="{{ ev.id }}" {% if selected_event == ev.id|stringformat:"s" %}selected{% endif %}>{{ ev.name|truncatechars:28 }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <select name="status" class="form-stitch-control" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          {% for st in statuses %}
+            <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ st }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-2">
+        <button type="submit" class="btn btn-light border w-100 py-2 rounded-2">Apply Filters</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Registrations Table -->
+  <div class="stitch-table-wrapper">
+    <div class="table-responsive">
+      <table class="stitch-table">
+        <thead>
+          <tr>
+            <th>Ticket Code</th>
+            <th>Attendee Name</th>
+            <th>Target Event</th>
+            <th>Email / Phone</th>
+            <th>Issued Date</th>
+            <th>Status</th>
+            <th class="text-end" style="width: 140px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for reg in registrations %}
+            <tr>
+              <td>
+                <span class="badge bg-light text-primary font-mono-data border px-2 py-1">{{ reg.ticket_id }}</span>
+              </td>
+              <td>
+                <div class="fw-semibold text-on-surface">{{ reg.name }}</div>
+                <span class="small font-mono-data text-muted-variant">{{ reg.registration_id }}</span>
+              </td>
+              <td>
+                <a href="{% url 'events:detail' reg.event.id %}" class="text-decoration-none text-on-surface fw-medium hover-primary">
+                  {{ reg.event.name|truncatechars:32 }}
+                </a>
+                <span class="d-block small text-muted-variant">{{ reg.event.venue }}</span>
+              </td>
+              <td>
+                <div class="text-on-surface">{{ reg.email }}</div>
+                <span class="font-mono-data small text-muted-variant">{{ reg.phone|default:"No phone" }}</span>
+              </td>
+              <td class="font-mono-data small">{{ reg.registration_date|date:"M d, Y" }}</td>
+              <td>
+                <span class="status-pill {% if reg.status == 'Checked In' %}status-confirmed{% elif reg.status == 'Registered' %}status-info{% else %}status-conflict{% endif %}">
+                  <span class="dot"></span> {{ reg.status }}
+                </span>
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex align-items-center gap-1">
+                  <a href="{% url 'registrations:detail' reg.id %}" class="btn btn-sm btn-light border p-1 rounded-2" title="View Pass">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">badge</span>
+                  </a>
+                  <a href="{% url 'registrations:edit' reg.id %}" class="btn btn-sm btn-light border p-1 rounded-2" title="Edit">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+                  </a>
+                  {% if reg.status != 'Cancelled' %}
+                    <a href="{% url 'registrations:cancel' reg.id %}" class="btn btn-sm btn-light border p-1 rounded-2 text-danger" title="Cancel">
+                      <span class="material-symbols-outlined" style="font-size: 18px;">cancel</span>
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted-variant">
+                <span class="material-symbols-outlined mb-2" style="font-size: 32px;">person_search</span>
+                <div>No registrations match your search criteria.</div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if registrations.has_other_pages %}
+    <div class="d-flex align-items-center justify-content-between pt-2">
+      <span class="small text-muted-variant font-mono-data">
+        Showing {{ registrations.start_index }} to {{ registrations.end_index }} of {{ registrations.paginator.count }} passes
+      </span>
+      <ul class="pagination pagination-sm mb-0">
+        {% if registrations.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ registrations.previous_page_number }}&q={{ q }}&event={{ selected_event }}&status={{ status_filter }}">Previous</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Previous</span></li>
+        {% endif %}
+
+        {% for num in registrations.paginator.page_range %}
+          <li class="page-item {% if registrations.number == num %}active{% endif %}">
+            <a class="page-link" href="?page={{ num }}&q={{ q }}&event={{ selected_event }}&status={{ status_filter }}">{{ num }}</a>
+          </li>
+        {% endfor %}
+
+        {% if registrations.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ registrations.next_page_number }}&q={{ q }}&event={{ selected_event }}&status={{ status_filter }}">Next</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Next</span></li>
+        {% endif %}
+      </ul>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
